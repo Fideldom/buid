@@ -142,25 +142,26 @@ public class GroupService
         return await _db.GroupMessages.AsNoTracking().Where(m => m.GroupId == groupId).OrderByDescending(m => m.SentAt).Take(Math.Clamp(take, 1, 100))
             .OrderBy(m => m.SentAt).Select(m => new GroupMessageDto(m.Id, m.GroupId, m.SenderId, m.Sender.FullName, m.Sender.ProfilePhotoUrl, m.Content, m.Type.ToString(), m.SentAt, m.IsDeleted)).ToListAsync();
     }
-        public async Task RejectInviteAsync(string userId, Guid groupId)
-        {
-                var invite = await _db.GroupInvites.FirstOrDefaultAsync(i => i.GroupId == groupId && i.InvitedUserId == userId && i.Status == GroupInviteStatus.Pending);
-            if (invite == null) throw new KeyNotFoundException("Convite não encontrado.");
-            invite.Status = GroupInviteStatus.Rejected;
-            await _db.SaveChangesAsync();
-        }
-        public async Task<object> UpdateSettingsAsync(string userId, Guid groupId, UpdateGroupSettingsDto dto)
-        {
-                var group = await _db.ChatGroups.FirstOrDefaultAsync(g => g.Id == groupId);
-            if (group == null) throw new KeyNotFoundException("Grupo não encontrado.");
-            if (group.OwnerId != userId) throw new UnauthorizedAccessException("Apenas o proprietário pode alterar as configurações.");
-            var name = dto.Name?.Trim();
-            if (string.IsNullOrWhiteSpace(name) || name.Length < 2 || name.Length > 120) throw new ArgumentException("Nome inválido.");
-            if (dto.Description?.Length > 500) throw new ArgumentException("Descrição demasiado longa.");
-            if (!string.IsNullOrWhiteSpace(dto.PhotoUrl) && !dto.PhotoUrl.StartsWith("/uploads/images/", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("Foto inválida.");
-            group.Name = name; group.Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim(); group.PhotoUrl = string.IsNullOrWhiteSpace(dto.PhotoUrl) ? null : dto.PhotoUrl.Trim();
-            await _db.SaveChangesAsync();
-            return new { id=group.Id, name=group.Name, description=group.Description, photoUrl=group.PhotoUrl };
-        }
-    
+    public async Task RejectInviteAsync(string userId, Guid groupId)
+    {
+        var invite = await _db.GroupInvites.FirstOrDefaultAsync(i => i.GroupId == groupId && i.InvitedUserId == userId && i.Status == GroupInviteStatus.Pending);
+        if (invite == null) throw new KeyNotFoundException("Convite não encontrado.");
+        invite.Status = GroupInviteStatus.Rejected;
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task<object> UpdateSettingsAsync(string userId, Guid groupId, UpdateGroupSettingsDto dto)
+    {
+        var group = await _db.ChatGroups.FirstOrDefaultAsync(g => g.Id == groupId);
+        if (group == null) throw new KeyNotFoundException("Grupo não encontrado.");
+        if (group.OwnerId != userId) throw new UnauthorizedAccessException("Apenas o proprietário pode alterar as configurações.");
+        var name = dto.Name?.Trim();
+        if (string.IsNullOrWhiteSpace(name) || name.Length < 2 || name.Length > 120) throw new ArgumentException("Nome inválido.");
+        if (dto.Description?.Length > 500) throw new ArgumentException("Descrição demasiado longa.");
+        if (!string.IsNullOrWhiteSpace(dto.PhotoUrl) && !dto.PhotoUrl.StartsWith("/uploads/images/", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("Foto inválida.");
+        group.Name = name; group.Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim(); group.PhotoUrl = string.IsNullOrWhiteSpace(dto.PhotoUrl) ? null : dto.PhotoUrl.Trim();
+        await _db.SaveChangesAsync();
+        return new { id=group.Id, name=group.Name, description=group.Description, photoUrl=group.PhotoUrl };
+    }
+
 }

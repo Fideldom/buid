@@ -8,7 +8,7 @@ let mediaRecorder = null;
 
 let audioChunks = [];
 
-let chatConnection = null; registerChatEvents
+let chatConnection = null;
 
 function getChatConnection() {
     if (
@@ -142,13 +142,9 @@ function registerChatEvents() {
                 notification
             );
 
-            const type =
-                notification?.type;
+            const type = String(notification?.type ?? "");
 
-            if (
-                type === "NewMessage" ||
-                type === 0
-            ) {
+            if (type === "NewMessage") {
                 if (
                     window.ChatBadges
                 ) {
@@ -158,11 +154,7 @@ function registerChatEvents() {
                 return;
             }
 
-            if (
-                type ===
-                "MeetingInvite" ||
-                type === 1
-            ) {
+            if (type === "MeetingInvite") {
                 if (
                     window.ChatBadges
                 ) {
@@ -263,11 +255,12 @@ function setupSidebarTabs() {
                         tabName ===
                         "notifications"
                     ) {
-                        if (
-                            window.ChatBadges
-                                ?.markNotificationsAsRead
-                        ) {
-                            window.ChatBadges.markNotificationsAsRead();
+                        if (window.ChatBadges?.markNotificationsAsRead) {
+                            loadNotifications().finally(() => {
+                                window.ChatBadges.markNotificationsAsRead();
+                            });
+                        } else {
+                            loadNotifications();
                         }
                     }
 
@@ -660,41 +653,121 @@ function setupFriendSearch() {
 }
 
 async function loadNotifications() {
+    const list = document.getElementById("notificationsList");
+    if (!list) return;
+
     try {
-        const response = await fetch("/api/notifications?onlyUnread=false", { cache: "no-store" });
-        if (!response.ok) return;
-        const notifications = (await response.json()).filter(n => ["MissedCall", "GroupInvite", "ChannelInvite"].includes(n.type));
-        const list = document.getElementById("notificationsList");
-        if (!list) return;
-        list.innerHTML = "";
-        if (!notifications.length) {
-            list.innerHTML = '<div class="text-center text-muted py-4">Não tens novas notificações.</div>';
-            window.ChatBadges?.notifications();
+        const response = await fetch("/api/notifications?onlyUnread=false", {
+            method: "GET",
+            headers: { Accept: "application/json" },
+            credentials: "same-origin",
+            cache: "no-store"
+        });
+
+        if (!response.ok) {
+            console.error("Erro ao carregar notificações:", response.status);
             return;
         }
-        notifications.forEach(n => {
+
+        const notifications = await response.json();
+        list.innerHTML = "";
+
+        if (!Array.isArray(notifications) || notifications.length === 0) {
+            list.innerHTML = '<div class="text-center text-muted py-4">Não há notificações.</div>';
+            return;
+        }
+
+        notifications.forEach((notification) => {
+            const type = String(notification?.type ?? "");
             const item = document.createElement("div");
-            item.className = `list-group-item ${n.isRead ? "" : "fw-bold"}`;
+            item.className = `list-group-item ${notification.isRead ? "" : "fw-bold"}`;
+            item.dataset.notificationId = notification.id;
+
             let actions = "";
-            if (n.type === "GroupInvite" && n.relatedEntityId) {
-                actions = `<div class="d-flex gap-2 mt-2"><button class="btn btn-sm btn-primary js-group-accept" data-group-id="${escapeHtml(n.relatedEntityId)}" data-notification-id="${n.id}">Aceitar</button><button class="btn btn-sm btn-outline-secondary js-group-reject" data-group-id="${escapeHtml(n.relatedEntityId)}" data-notification-id="${n.id}">Recusar</button></div>`;
-            } else if (n.type === "ChannelInvite" && n.relatedEntityId) {
-                actions = `<div class="d-flex gap-2 mt-2"><button class="btn btn-sm btn-primary js-channel-accept" data-invite-id="${escapeHtml(n.relatedEntityId)}" data-notification-id="${n.id}">Aceitar</button><button class="btn btn-sm btn-outline-secondary js-channel-reject" data-invite-id="${escapeHtml(n.relatedEntityId)}" data-notification-id="${n.id}">Recusar</button></div>`;
+
+            if (type === "GroupInvite" && notification.relatedEntityId) {
+                actions = `
+                    <div class="d-flex gap-2 mt-2">
+                        <button type="button" class="btn btn-sm btn-primary js-group-accept"
+                                data-group-id="${escapeHtml(notification.relatedEntityId)}"
+                                data-notification-id="${notification.id}">Aceitar</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary js-group-reject"
+                                data-group-id="${escapeHtml(notification.relatedEntityId)}"
+                                data-notification-id="${notification.id}">Recusar</button>
+                    </div>`;
+            } else if (type === "ChannelInvite" && notification.relatedEntityId) {
+                actions = `
+                    <div class="d-flex gap-2 mt-2">
+                        <button type="button" class="btn btn-sm btn-primary js-channel-accept"
+                                data-invite-id="${escapeHtml(notification.relatedEntityId)}"
+                                data-notification-id="${notification.id}">Aceitar</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary js-channel-reject"
+                                data-invite-id="${escapeHtml(notification.relatedEntityId)}"
+                                data-notification-id="${notification.id}">Recusar</button>
+                    </div>`;
             }
-            item.innerHTML = `<div><div>${escapeHtml(n.title || "")}</div><small class="text-muted">${escapeHtml(n.content || "")}</small>${actions}</div>`;
-            item.querySelectorAll("button").forEach(btn => btn.addEventListener("click", async () => {
-                btn.disabled = true;
-                const isGroup = btn.classList.contains("js-group-accept") || btn.classList.contains("js-group-reject");
-                const accept = btn.classList.contains("js-group-accept") || btn.classList.contains("js-channel-accept");
-                const endpoint = isGroup ? `/api/groups/${btn.dataset.groupId}/${accept ? "accept" : "reject"}` : `/api/channels/invites/${btn.dataset.inviteId}/${accept ? "accept" : "reject"}`;
-                const r = await fetch(endpoint, { method: "POST" });
-                if (r.ok) { await fetch(`/api/notifications/${btn.dataset.notificationId}/read`, { method: "POST" }); item.remove(); window.ChatBadges?.notifications(); }
-                else btn.disabled = false;
-            }));
+
+            const createdAt = notification.createdAt
+                ? new Date(notification.createdAt).toLocaleString()
+                : "";
+
+            item.innerHTML = `
+                <div>
+                    <div>${escapeHtml(notification.title || "Notificação")}</div>
+                    <small class="text-muted">${escapeHtml(notification.content || "")}</small>
+                    ${createdAt ? `<div><small class="text-muted">${escapeHtml(createdAt)}</small></div>` : ""}
+                    ${actions}
+                </div>`;
+
+            item.querySelectorAll("button").forEach((button) => {
+                button.addEventListener("click", async () => {
+                    button.disabled = true;
+
+                    const isGroup =
+                        button.classList.contains("js-group-accept") ||
+                        button.classList.contains("js-group-reject");
+
+                    const accept =
+                        button.classList.contains("js-group-accept") ||
+                        button.classList.contains("js-channel-accept");
+
+                    const endpoint = isGroup
+                        ? `/api/groups/${encodeURIComponent(button.dataset.groupId)}/${accept ? "accept" : "reject"}`
+                        : `/api/channels/invites/${encodeURIComponent(button.dataset.inviteId)}/${accept ? "accept" : "reject"}`;
+
+                    try {
+                        const response = await fetch(endpoint, {
+                            method: "POST",
+                            headers: { Accept: "application/json" },
+                            credentials: "same-origin"
+                        });
+
+                        if (!response.ok) {
+                            console.error("Erro ao responder ao convite:", response.status);
+                            button.disabled = false;
+                            return;
+                        }
+
+                        await fetch(`/api/notifications/${encodeURIComponent(notification.id)}/read`, {
+                            method: "POST",
+                            headers: { Accept: "application/json" },
+                            credentials: "same-origin"
+                        });
+
+                        item.remove();
+                        await window.ChatBadges?.notifications?.();
+                    } catch (error) {
+                        console.error("Erro ao responder ao convite:", error);
+                        button.disabled = false;
+                    }
+                });
+            });
+
             list.appendChild(item);
         });
-        window.ChatBadges?.notifications();
-    } catch (e) { console.error("Erro ao carregar notificações:", e); }
+    } catch (error) {
+        console.error("Erro ao carregar notificações:", error);
+    }
 }
 
 async function loadMeetings() {

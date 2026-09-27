@@ -1,769 +1,267 @@
-(function () {
-    "use strict";
+"use strict";
 
-    const BADGES_API = "/api/Notifications";
+const BADGES_API = "/api/Notifications";
 
-    let badgePollingInterval = null;
-    let isInitialized = false;
+// ATUALIZAR BADGE
+function updateBadge(elementId, count) {
+  const badge = document.getElementById(elementId);
 
-    /*
-     * ============================================================
-     * UTILITÁRIOS
-     * ============================================================
-     */
+  if (!badge) {
+    console.warn(`ChatBadges: elemento #${elementId} não encontrado.`);
 
-    function getElement(selector) {
-        return document.querySelector(selector);
+    return;
+  }
+
+  const value = Number(count) || 0;
+
+  if (value <= 0) {
+    badge.textContent = "0";
+
+    badge.classList.add("d-none");
+
+    return;
+  }
+
+  badge.textContent = value > 99 ? "99+" : value.toString();
+
+  badge.classList.remove("d-none");
+}
+
+// BUSCAR CONTADOR
+async function fetchBadgeCount(endpoint, badgeId) {
+  try {
+    const url = `${BADGES_API}/${endpoint}`;
+
+    console.log("ChatBadges:", url);
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+
+      console.error(`ChatBadges: erro em ${url}`, response.status, text);
+
+      return;
     }
 
-    function setBadge(selector, count) {
-        const badge = getElement(selector);
+    const data = await response.json();
 
-        if (!badge) {
-            return;
-        }
+    console.log(`ChatBadges: ${endpoint} =`, data.count);
 
-        const safeCount = Number.isFinite(Number(count))
-            ? Math.max(0, Number(count))
-            : 0;
+    updateBadge(badgeId, data.count);
+  } catch (error) {
+    console.error(`ChatBadges: erro ao carregar ${endpoint}:`, error);
+  }
+}
 
-        if (safeCount <= 0) {
-            badge.textContent = "";
-            badge.hidden = true;
-            badge.classList.remove("show");
-            badge.setAttribute("aria-hidden", "true");
-            return;
-        }
+// NOTIFICAÇÕES
+async function loadNotificationBadge() {
+  await fetchBadgeCount("count", "notifBadge");
+}
 
-        badge.textContent = safeCount > 99 ? "99+" : String(safeCount);
-        badge.hidden = false;
-        badge.classList.add("show");
-        badge.setAttribute("aria-hidden", "false");
+// MENSAGENS
+async function loadMessageBadge() {
+  await fetchBadgeCount("messages-count", "messageBadge");
+}
+
+// REUNIÕES
+async function loadMeetingBadge() {
+  await fetchBadgeCount("meetings-count", "meetingBadge");
+}
+
+// TODOS
+async function loadAllBadges() {
+  await Promise.allSettled([
+    loadNotificationBadge(),
+    loadMessageBadge(),
+    loadMeetingBadge(),
+  ]);
+}
+
+// POLLING
+let badgePollingInterval = null;
+
+function startBadgePolling() {
+  if (badgePollingInterval !== null) {
+    return;
+  }
+
+  badgePollingInterval = setInterval(loadAllBadges, 10000);
+}
+
+function stopBadgePolling() {
+  if (badgePollingInterval !== null) {
+    clearInterval(badgePollingInterval);
+    badgePollingInterval = null;
+  }
+}
+
+// MARCAR MENSAGENS COMO LIDAS
+async function markMessagesAsRead() {
+  try {
+    const response = await fetch(`${BADGES_API}/messages/read`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+      credentials: "same-origin",
+    });
+
+    if (!response.ok) {
+      console.error("Erro ao marcar mensagens:", response.status);
+
+      return;
     }
 
-    function getCountFromResponse(data) {
-        if (typeof data === "number") {
-            return data;
-        }
+    updateBadge("messageBadge", 0);
+  } catch (error) {
+    console.error("Erro ao marcar mensagens:", error);
+  }
+}
 
-        if (!data || typeof data !== "object") {
-            return 0;
-        }
+// MARCAR REUNIÕES COMO LIDAS
+async function markMeetingsAsRead() {
+  try {
+    const response = await fetch(`${BADGES_API}/meetings/read`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+      credentials: "same-origin",
+    });
 
-        const possibleValues = [
-            data.count,
-            data.total,
-            data.unreadCount,
-            data.notificationsCount,
-            data.messagesCount,
-            data.meetingsCount
-        ];
+    if (!response.ok) {
+      console.error("Erro ao marcar reuniões:", response.status);
 
-        for (const value of possibleValues) {
-            const number = Number(value);
-
-            if (Number.isFinite(number)) {
-                return Math.max(0, number);
-            }
-        }
-
-        return 0;
+      return;
     }
 
-    async function fetchJson(url, options = {}) {
-        const response = await fetch(url, {
-            credentials: "same-origin",
-            cache: "no-store",
-            ...options,
-            headers: {
-                Accept: "application/json",
-                ...(options.headers || {})
-            }
-        });
+    updateBadge("meetingBadge", 0);
+  } catch (error) {
+    console.error("Erro ao marcar reuniões:", error);
+  }
+}
 
-        if (!response.ok) {
-            throw new Error(
-                `HTTP ${response.status} ao acessar ${url}`
-            );
-        }
+// CLICAR EM NOTIFICAÇÕES
+document.addEventListener("click", (event) => {
+  const button = event.target.closest('#sidebarTabs .nav-link[data-tab="notifications"]');
+  if (!button) return;
+  markNotificationsAsRead().then(() => window.ChatBadges?.notifications());
+});
 
-        const contentType = response.headers.get("content-type") || "";
+// CLICAR EM MENSAGENS
+document.addEventListener("click", (event) => {
+  const button = event.target.closest(
+    '#sidebarTabs .nav-link[data-tab="friends"]',
+  );
 
-        if (!contentType.includes("application/json")) {
-            return null;
-        }
+  if (!button) {
+    return;
+  }
 
-        return await response.json();
+  markMessagesAsRead();
+});
+
+// CLICAR EM REUNIÕES
+document.addEventListener("click", (event) => {
+  const button = event.target.closest(
+    '#sidebarTabs .nav-link[data-tab="meetings"]',
+  );
+
+  if (!button) {
+    return;
+  }
+
+  markMeetingsAsRead();
+});
+
+// INICIALIZAÇÃO
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("ChatApp: iniciando ChatBadges...");
+
+  loadAllBadges();
+
+  startBadgePolling();
+});
+
+// ============================================================
+async function markConversationMessagesAsRead(friendId) {
+  if (!friendId) {
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${BADGES_API}/messages/${encodeURIComponent(friendId)}/read`,
+      {
+        method: "POST",
+
+        headers: {
+          Accept: "application/json",
+        },
+
+        credentials: "same-origin",
+      },
+    );
+
+    if (!response.ok) {
+      console.error("Erro ao marcar conversa como lida:", response.status);
+
+      return;
     }
 
-    /*
-     * ============================================================
-     * NOTIFICAÇÕES
-     *
-     * Apenas estas notificações entram no badge/central:
-     *
-     * - MissedCall
-     * - GroupInvite
-     * - ChannelInvite
-     * ============================================================
-     */
+    // Atualizar contador depois de marcar
+    await loadMessageBadge();
+  } catch (error) {
+    console.error("Erro ao marcar mensagens da conversa:", error);
+  }
+}
 
-    async function fetchNotificationCount() {
-        try {
-            const data = await fetchJson(
-                `${BADGES_API}/count`
-            );
+async function markNotificationsAsRead() {
+  try {
+    const response = await fetch(`${BADGES_API}/read-all`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+      credentials: "same-origin",
+    });
 
-            const count = getCountFromResponse(data);
-
-            setBadge(
-                '[data-notification-badge], #notificationBadge, .notification-badge',
-                count
-            );
-
-            return count;
-        } catch (error) {
-            console.warn(
-                "[ChatBadges] Não foi possível obter o contador de notificações:",
-                error
-            );
-
-            return 0;
-        }
+    if (!response.ok) {
+      console.error("Erro ao marcar notificações como lidas:", response.status);
+      return;
     }
 
-    /*
-     * ============================================================
-     * MENSAGENS
-     * ============================================================
-     */
+    updateBadge("notifBadge", 0);
+  } catch (error) {
+    console.error("Erro ao marcar notificações como lidas:", error);
+  }
+}
 
-    async function fetchMessageCount() {
-        try {
-            const data = await fetchJson(
-                `${BADGES_API}/messages-count`
-            );
+// API GLOBAL click
+window.ChatBadges = {
+  reload: loadAllBadges,
 
-            const count = getCountFromResponse(data);
+  notifications: loadNotificationBadge,
 
-            setBadge(
-                '[data-message-badge], #messageBadge, .message-badge',
-                count
-            );
+  messages: loadMessageBadge,
 
-            return count;
-        } catch (error) {
-            console.warn(
-                "[ChatBadges] Não foi possível obter o contador de mensagens:",
-                error
-            );
+  meetings: loadMeetingBadge,
 
-            return 0;
-        }
-    }
+  markNotificationsAsRead,
 
-    /*
-     * ============================================================
-     * REUNIÕES
-     * ============================================================
-     */
+  markMessagesAsRead,
 
-    async function fetchMeetingCount() {
-        try {
-            const data = await fetchJson(
-                `${BADGES_API}/meetings-count`
-            );
+  markMeetingsAsRead,
 
-            const count = getCountFromResponse(data);
+  update: updateBadge,
 
-            setBadge(
-                '[data-meeting-badge], #meetingBadge, .meeting-badge',
-                count
-            );
-
-            return count;
-        } catch (error) {
-            console.warn(
-                "[ChatBadges] Não foi possível obter o contador de reuniões:",
-                error
-            );
-
-            return 0;
-        }
-    }
-
-    /*
-     * ============================================================
-     * ATUALIZAÇÃO INDIVIDUAL
-     * ============================================================
-     */
-
-    async function updateNotificationBadge() {
-        return await fetchNotificationCount();
-    }
-
-    async function updateMessageBadge() {
-        return await fetchMessageCount();
-    }
-
-    async function updateMeetingBadge() {
-        return await fetchMeetingCount();
-    }
-
-    /*
-     * ============================================================
-     * ATUALIZAÇÃO COMPLETA
-     * ============================================================
-     */
-
-    async function updateAllBadges() {
-        await Promise.allSettled([
-            fetchNotificationCount(),
-            fetchMessageCount(),
-            fetchMeetingCount()
-        ]);
-    }
-
-    /*
-     * ============================================================
-     * MARCAR NOTIFICAÇÕES COMO LIDAS
-     *
-     * O centro de notificações contém apenas:
-     * - chamadas perdidas
-     * - convites de grupo
-     * - convites de canal
-     * ============================================================
-     */
-
-    async function markNotificationsAsRead() {
-        try {
-            const response = await fetch(
-                `${BADGES_API}/read-all`,
-                {
-                    method: "POST",
-                    credentials: "same-origin",
-                    cache: "no-store",
-                    headers: {
-                        Accept: "application/json"
-                    }
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error(
-                    `HTTP ${response.status} ao marcar notificações como lidas`
-                );
-            }
-
-            setBadge(
-                '[data-notification-badge], #notificationBadge, .notification-badge',
-                0
-            );
-
-            return true;
-        } catch (error) {
-            console.warn(
-                "[ChatBadges] Não foi possível marcar notificações como lidas:",
-                error
-            );
-
-            return false;
-        }
-    }
-
-    /*
-     * ============================================================
-     * MARCAR UMA NOTIFICAÇÃO ESPECÍFICA COMO LIDA
-     * ============================================================
-     */
-
-    async function markNotificationAsRead(notificationId) {
-        if (!notificationId) {
-            return false;
-        }
-
-        try {
-            const response = await fetch(
-                `${BADGES_API}/${encodeURIComponent(notificationId)}/read`,
-                {
-                    method: "POST",
-                    credentials: "same-origin",
-                    cache: "no-store",
-                    headers: {
-                        Accept: "application/json"
-                    }
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error(
-                    `HTTP ${response.status} ao marcar notificação`
-                );
-            }
-
-            await fetchNotificationCount();
-
-            return true;
-        } catch (error) {
-            console.warn(
-                "[ChatBadges] Não foi possível marcar a notificação como lida:",
-                error
-            );
-
-            return false;
-        }
-    }
-
-    /*
-     * ============================================================
-     * MARCAR MENSAGENS COMO LIDAS
-     * ============================================================
-     */
-
-    async function markMessagesAsRead() {
-        try {
-            const response = await fetch(
-                `${BADGES_API}/messages/read-all`,
-                {
-                    method: "POST",
-                    credentials: "same-origin",
-                    cache: "no-store",
-                    headers: {
-                        Accept: "application/json"
-                    }
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error(
-                    `HTTP ${response.status} ao marcar mensagens como lidas`
-                );
-            }
-
-            setBadge(
-                '[data-message-badge], #messageBadge, .message-badge',
-                0
-            );
-
-            return true;
-        } catch (error) {
-            console.warn(
-                "[ChatBadges] Não foi possível marcar mensagens como lidas:",
-                error
-            );
-
-            return false;
-        }
-    }
-
-    /*
-     * ============================================================
-     * MARCAR REUNIÕES COMO LIDAS
-     * ============================================================
-     */
-
-    async function markMeetingsAsRead() {
-        try {
-            const response = await fetch(
-                `${BADGES_API}/meetings/read-all`,
-                {
-                    method: "POST",
-                    credentials: "same-origin",
-                    cache: "no-store",
-                    headers: {
-                        Accept: "application/json"
-                    }
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error(
-                    `HTTP ${response.status} ao marcar reuniões como lidas`
-                );
-            }
-
-            setBadge(
-                '[data-meeting-badge], #meetingBadge, .meeting-badge',
-                0
-            );
-
-            return true;
-        } catch (error) {
-            console.warn(
-                "[ChatBadges] Não foi possível marcar reuniões como lidas:",
-                error
-            );
-
-            return false;
-        }
-    }
-
-    /*
-     * ============================================================
-     * POLLING
-     * ============================================================
-     */
-
-    function stopBadgePolling() {
-        if (badgePollingInterval !== null) {
-            clearInterval(badgePollingInterval);
-            badgePollingInterval = null;
-        }
-    }
-
-    function startBadgePolling() {
-        stopBadgePolling();
-
-        /*
-         * Primeira atualização imediatamente.
-         */
-        updateAllBadges();
-
-        /*
-         * Atualização periódica.
-         */
-        badgePollingInterval = window.setInterval(
-            function () {
-                updateAllBadges();
-            },
-            10000
-        );
-    }
-
-    /*
-     * ============================================================
-     * EVENTOS DO DOM
-     * ============================================================
-     */
-
-    function setupNotificationEvents() {
-        /*
-         * Procura qualquer elemento que possa representar
-         * a aba/botão das notificações.
-         */
-        const notificationSelectors = [
-            "[data-notifications-tab]",
-            "[data-open-notifications]",
-            "#notificationsTab",
-            "#notificationTab",
-            "#btnNotifications",
-            ".notifications-tab"
-        ];
-
-        const elements = document.querySelectorAll(
-            notificationSelectors.join(",")
-        );
-
-        elements.forEach(function (element) {
-            if (element.dataset.badgesBound === "true") {
-                return;
-            }
-
-            element.dataset.badgesBound = "true";
-
-            element.addEventListener("click", function () {
-                /*
-                 * O usuário abriu a central.
-                 * As notificações exibidas nessa central
-                 * devem deixar de contar como não lidas.
-                 */
-                markNotificationsAsRead();
-            });
-        });
-    }
-
-    function setupMessageEvents() {
-        const selectors = [
-            "[data-messages-tab]",
-            "[data-open-messages]",
-            "#messagesTab",
-            "#messageTab",
-            "#btnMessages",
-            ".messages-tab"
-        ];
-
-        const elements = document.querySelectorAll(
-            selectors.join(",")
-        );
-
-        elements.forEach(function (element) {
-            if (element.dataset.badgesBound === "true") {
-                return;
-            }
-
-            element.dataset.badgesBound = "true";
-
-            element.addEventListener("click", function () {
-                markMessagesAsRead();
-            });
-        });
-    }
-
-    function setupMeetingEvents() {
-        const selectors = [
-            "[data-meetings-tab]",
-            "[data-open-meetings]",
-            "#meetingsTab",
-            "#meetingTab",
-            "#btnMeetings",
-            ".meetings-tab"
-        ];
-
-        const elements = document.querySelectorAll(
-            selectors.join(",")
-        );
-
-        elements.forEach(function (element) {
-            if (element.dataset.badgesBound === "true") {
-                return;
-            }
-
-            element.dataset.badgesBound = "true";
-
-            element.addEventListener("click", function () {
-                markMeetingsAsRead();
-            });
-        });
-    }
-
-    function setupEvents() {
-        setupNotificationEvents();
-        setupMessageEvents();
-        setupMeetingEvents();
-    }
-
-    /*
-     * ============================================================
-     * REALTIME — SIGNALR
-     * ============================================================
-     *
-     * O ChatHub pode disparar:
-     *
-     * ReceiveNotification
-     *
-     * Não criamos uma nova conexão aqui.
-     * Aproveitamos a conexão global caso ela exista.
-     * ============================================================
-     */
-
-    function bindRealtimeEvents() {
-        const connection =
-            window.chatConnection ||
-            window.chatHubConnection ||
-            window.ChatConnection ||
-            window.signalRConnection;
-
-        if (!connection || typeof connection.on !== "function") {
-            return false;
-        }
-
-        if (connection.__chatBadgesBound) {
-            return true;
-        }
-
-        connection.__chatBadgesBound = true;
-
-        connection.on(
-            "ReceiveNotification",
-            function () {
-                /*
-                 * Uma nova notificação chegou.
-                 * Atualizamos somente o badge de notificações.
-                 */
-                updateNotificationBadge();
-            }
-        );
-
-        connection.on(
-            "NotificationReceived",
-            function () {
-                updateNotificationBadge();
-            }
-        );
-
-        connection.on(
-            "ReceiveMessage",
-            function () {
-                updateMessageBadge();
-            }
-        );
-
-        connection.on(
-            "MessageReceived",
-            function () {
-                updateMessageBadge();
-            }
-        );
-
-        connection.on(
-            "MeetingNotification",
-            function () {
-                updateMeetingBadge();
-            }
-        );
-
-        connection.on(
-            "MeetingReceived",
-            function () {
-                updateMeetingBadge();
-            }
-        );
-
-        return true;
-    }
-
-    /*
-     * ============================================================
-     * MUTATIONS / EVENTOS PERSONALIZADOS
-     * ============================================================
-     */
-
-    function setupCustomEvents() {
-        document.addEventListener(
-            "chatapp:notification-received",
-            function () {
-                updateNotificationBadge();
-            }
-        );
-
-        document.addEventListener(
-            "chatapp:notification-read",
-            function () {
-                updateNotificationBadge();
-            }
-        );
-
-        document.addEventListener(
-            "chatapp:message-received",
-            function () {
-                updateMessageBadge();
-            }
-        );
-
-        document.addEventListener(
-            "chatapp:message-read",
-            function () {
-                updateMessageBadge();
-            }
-        );
-
-        document.addEventListener(
-            "chatapp:meeting-received",
-            function () {
-                updateMeetingBadge();
-            }
-        );
-
-        document.addEventListener(
-            "chatapp:meeting-read",
-            function () {
-                updateMeetingBadge();
-            }
-        );
-    }
-
-    /*
-     * ============================================================
-     * VISIBILIDADE DA PÁGINA
-     * ============================================================
-     */
-
-    function setupVisibilityEvents() {
-        document.addEventListener(
-            "visibilitychange",
-            function () {
-                if (document.visibilityState === "visible") {
-                    updateAllBadges();
-                }
-            }
-        );
-    }
-
-    /*
-     * ============================================================
-     * INICIALIZAÇÃO
-     * ============================================================
-     */
-
-    function initialize() {
-        if (isInitialized) {
-            return;
-        }
-
-        isInitialized = true;
-
-        setupEvents();
-        setupCustomEvents();
-        setupVisibilityEvents();
-
-        /*
-         * Tenta ligar ao SignalR global.
-         *
-         * Como o connection pode ser criado depois
-         * deste script, fazemos algumas tentativas curtas.
-         */
-        let attempts = 0;
-
-        const realtimeTimer = window.setInterval(
-            function () {
-                attempts++;
-
-                if (bindRealtimeEvents() || attempts >= 20) {
-                    clearInterval(realtimeTimer);
-                }
-            },
-            500
-        );
-
-        startBadgePolling();
-    }
-
-    /*
-     * ============================================================
-     * API PÚBLICA
-     * ============================================================
-     */
-
-    window.ChatBadges = {
-        update: updateAllBadges,
-
-        notifications: updateNotificationBadge,
-
-        messages: updateMessageBadge,
-
-        meetings: updateMeetingBadge,
-
-        markNotificationsAsRead: markNotificationsAsRead,
-
-        markNotificationAsRead: markNotificationAsRead,
-
-        markMessagesAsRead: markMessagesAsRead,
-
-        markMeetingsAsRead: markMeetingsAsRead,
-
-        startPolling: startBadgePolling,
-
-        stopPolling: stopBadgePolling
-    };
-
-    /*
-     * ============================================================
-     * START
-     * ============================================================
-     */
-
-    if (
-        document.readyState === "loading"
-    ) {
-        document.addEventListener(
-            "DOMContentLoaded",
-            initialize,
-            {
-                once: true
-            }
-        );
-    } else {
-        initialize();
-    }
-})();
-
+  stopPolling: stopBadgePolling,
+};

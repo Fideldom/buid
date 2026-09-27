@@ -427,25 +427,26 @@ public class ChannelController : ControllerBase
             });
         }
     }
-        [HttpPost("invites/{inviteId:guid}/accept")]
-        public async Task<IActionResult> AcceptInvite(Guid inviteId)
-        {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
-            try { await _channelInviteService.AcceptInviteAsync(userId, inviteId); return Ok(new { success = true }); }
-            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
-        }
-        [HttpPost("invites/{inviteId:guid}/reject")]
-        public async Task<IActionResult> RejectInvite(Guid inviteId)
-        {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
-            try { await _channelInviteService.RejectInviteAsync(userId, inviteId); return Ok(new { success = true }); }
-            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
-        }
-    
+    [HttpPost("invites/{inviteId:guid}/accept")]
+    public async Task<IActionResult> AcceptInvite(Guid inviteId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+        try { await _channelInviteService.AcceptInviteAsync(userId, inviteId); return Ok(new { success = true }); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [HttpPost("invites/{inviteId:guid}/reject")]
+    public async Task<IActionResult> RejectInvite(Guid inviteId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+        try { await _channelInviteService.RejectInviteAsync(userId, inviteId); return Ok(new { success = true }); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
     [HttpPut("{id:guid}/settings")]
     public async Task<IActionResult> UpdateSettings(Guid id, [FromBody] UpdateChannelDto dto)
     {

@@ -23,27 +23,35 @@ public class NotificationsController : ControllerBase
         _userManager = userManager;
     }
 
-    private string CurrentUserId =>
-        _userManager.GetUserId(User)!;
+    private string? CurrentUserId => _userManager.GetUserId(User);
 
-
-    // ============================================================
-    // TODAS AS NOTIFICAÇÕES
-    // ============================================================
+    // O centro de notificações mostra EXCLUSIVAMENTE:
+    // - chamadas perdidas
+    // - convites para grupos
+    // - convites para canais
+    // Convites de reuniões ficam persistidos no banco, mas aparecem na aba Reuniões.
+    private static IQueryable<Notification> UserCenterNotifications(
+        IQueryable<Notification> query,
+        string userId)
+    {
+        return query.Where(n =>
+            n.UserId == userId &&
+            (n.Type == NotificationType.MissedCall ||
+             n.Type == NotificationType.GroupInvite ||
+             n.Type == NotificationType.ChannelInvite));
+    }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll(
-        [FromQuery] bool onlyUnread = false)
+    public async Task<IActionResult> GetAll([FromQuery] bool onlyUnread = false)
     {
         var userId = CurrentUserId;
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
 
-        var query = _db.Notifications
-            .Where(n => n.UserId == userId && IsUserNotification(n.Type));
+        var query = UserCenterNotifications(_db.Notifications.AsNoTracking(), userId);
 
         if (onlyUnread)
-        {
             query = query.Where(n => !n.IsRead);
-        }
 
         var result = await query
             .OrderByDescending(n => n.CreatedAt)
@@ -51,17 +59,11 @@ public class NotificationsController : ControllerBase
             .Select(n => new
             {
                 n.Id,
-
                 Type = n.Type.ToString(),
-
                 n.Title,
-
                 n.Content,
-
                 n.RelatedEntityId,
-
                 n.IsRead,
-
                 n.CreatedAt
             })
             .ToListAsync();
@@ -69,32 +71,25 @@ public class NotificationsController : ControllerBase
         return Ok(result);
     }
 
-
-    // ============================================================
-    // CONTADOR DE NOTIFICAÇÕES
-    // ============================================================
-
     [HttpGet("count")]
     public async Task<IActionResult> GetNotificationCount()
     {
         var userId = CurrentUserId;
-        var count = await _db.Notifications.CountAsync(n => n.UserId == userId && !n.IsRead && IsUserNotification(n.Type));
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        var count = await UserCenterNotifications(_db.Notifications, userId)
+            .CountAsync(n => !n.IsRead);
+
         return Ok(new { count });
     }
-
-    private static bool IsUserNotification(NotificationType type) =>
-        type == NotificationType.MissedCall ||
-        type == NotificationType.GroupInvite ||
-        type == NotificationType.ChannelInvite;
-
-    // ============================================================
-    // CONTADOR DE MENSAGENS
-    // ============================================================
 
     [HttpGet("messages-count")]
     public async Task<IActionResult> GetMessagesCount()
     {
         var userId = CurrentUserId;
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
 
         var count = await _db.Messages
             .CountAsync(m =>
@@ -102,21 +97,15 @@ public class NotificationsController : ControllerBase
                 !m.IsRead &&
                 !m.IsDeleted);
 
-        return Ok(new
-        {
-            count
-        });
+        return Ok(new { count });
     }
-
-
-    // ============================================================
-    // CONTADOR DE REUNIÕES
-    // ============================================================
 
     [HttpGet("meetings-count")]
     public async Task<IActionResult> GetMeetingsCount()
     {
         var userId = CurrentUserId;
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
 
         var count = await _db.Notifications
             .CountAsync(n =>
@@ -124,131 +113,112 @@ public class NotificationsController : ControllerBase
                 !n.IsRead &&
                 n.Type == NotificationType.MeetingInvite);
 
-        return Ok(new
-        {
-            count
-        });
+        return Ok(new { count });
     }
-
-
-    // ============================================================
-    // MARCAR NOTIFICAÇÃO COMO LIDA
-    // ============================================================
 
     [HttpPost("{id:int}/read")]
     public async Task<IActionResult> MarkAsRead(int id)
     {
         var userId = CurrentUserId;
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
 
-        var notification =
-            await _db.Notifications
-                .FirstOrDefaultAsync(n =>
-                    n.Id == id &&
-                    n.UserId == userId);
+        var notification = await _db.Notifications
+            .FirstOrDefaultAsync(n =>
+                n.Id == id &&
+                n.UserId == userId);
 
         if (notification == null)
-        {
             return NotFound();
-        }
 
         notification.IsRead = true;
-
         await _db.SaveChangesAsync();
 
-        return Ok();
+        return Ok(new { success = true });
     }
-
-
-    // ============================================================
-    // MARCAR TODAS AS NOTIFICAÇÕES COMO LIDAS
-    // ============================================================
 
     [HttpPost("read-all")]
     public async Task<IActionResult> MarkAllAsRead()
     {
         var userId = CurrentUserId;
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
 
-        var unread =
-            await _db.Notifications
-                .Where(n =>
-                    n.UserId == userId &&
-                    !n.IsRead &&
-                    IsUserNotification(n.Type))
-                .ToListAsync();
+        var unread = await UserCenterNotifications(_db.Notifications, userId)
+            .Where(n => !n.IsRead)
+            .ToListAsync();
 
-        foreach (var notification in unread)
+        if (unread.Count > 0)
         {
-            notification.IsRead = true;
+            foreach (var notification in unread)
+                notification.IsRead = true;
+
+            await _db.SaveChangesAsync();
         }
 
-        await _db.SaveChangesAsync();
-
-        return Ok();
+        return Ok(new { count = unread.Count });
     }
-
-
-    // ============================================================
-    // MARCAR MENSAGENS COMO LIDAS
-    // ============================================================
 
     [HttpPost("messages/read")]
     public async Task<IActionResult> MarkMessagesAsRead()
     {
         var userId = CurrentUserId;
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
 
-        var messages =
-            await _db.Messages
-                .Where(m =>
-                    m.ReceiverId == userId &&
-                    !m.IsRead &&
-                    !m.IsDeleted)
-                .ToListAsync();
+        var messages = await _db.Messages
+            .Where(m =>
+                m.ReceiverId == userId &&
+                !m.IsRead &&
+                !m.IsDeleted)
+            .ToListAsync();
+
+        var now = DateTime.UtcNow;
 
         foreach (var message in messages)
         {
             message.IsRead = true;
-            message.ReadAt = DateTime.UtcNow;
+            message.ReadAt = now;
         }
 
-        await _db.SaveChangesAsync();
+        if (messages.Count > 0)
+            await _db.SaveChangesAsync();
 
-        return Ok();
+        return Ok(new { count = messages.Count });
     }
-
-
-    // ============================================================
-    // MARCAR REUNIÕES COMO LIDAS
-    // ============================================================
 
     [HttpPost("meetings/read")]
     public async Task<IActionResult> MarkMeetingsAsRead()
     {
         var userId = CurrentUserId;
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
 
-        var notifications =
-            await _db.Notifications
-                .Where(n =>
-                    n.UserId == userId &&
-                    !n.IsRead &&
-                    n.Type == NotificationType.MeetingInvite)
-                .ToListAsync();
+        var notifications = await _db.Notifications
+            .Where(n =>
+                n.UserId == userId &&
+                !n.IsRead &&
+                n.Type == NotificationType.MeetingInvite)
+            .ToListAsync();
 
         foreach (var notification in notifications)
-        {
             notification.IsRead = true;
-        }
 
-        await _db.SaveChangesAsync();
+        if (notifications.Count > 0)
+            await _db.SaveChangesAsync();
 
-        return Ok();
+        return Ok(new { count = notifications.Count });
     }
 
-    // MARCAR Mensagens como lidas pra cada conversa!
     [HttpPost("messages/{friendId}/read")]
-    public async Task<IActionResult> MarkConversationMessagesAsRead(
-    string friendId)
+    public async Task<IActionResult> MarkConversationMessagesAsRead(string friendId)
     {
         var userId = CurrentUserId;
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        if (string.IsNullOrWhiteSpace(friendId))
+            return BadRequest(new { message = "Utilizador inválido." });
 
         var messages = await _db.Messages
             .Where(m =>
@@ -258,17 +228,17 @@ public class NotificationsController : ControllerBase
                 !m.IsDeleted)
             .ToListAsync();
 
+        var now = DateTime.UtcNow;
+
         foreach (var message in messages)
         {
             message.IsRead = true;
-            message.ReadAt = DateTime.UtcNow;
+            message.ReadAt = now;
         }
 
-        await _db.SaveChangesAsync();
+        if (messages.Count > 0)
+            await _db.SaveChangesAsync();
 
-        return Ok(new
-        {
-            count = messages.Count
-        });
+        return Ok(new { count = messages.Count });
     }
 }
