@@ -427,4 +427,40 @@ public class ChannelController : ControllerBase
             });
         }
     }
+        [HttpPost("invites/{inviteId:guid}/accept")]
+        public async Task<IActionResult> AcceptInvite(Guid inviteId)
+        {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+            try { await _channelInviteService.AcceptInviteAsync(userId, inviteId); return Ok(new { success = true }); }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        }
+        [HttpPost("invites/{inviteId:guid}/reject")]
+        public async Task<IActionResult> RejectInvite(Guid inviteId)
+        {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+            try { await _channelInviteService.RejectInviteAsync(userId, inviteId); return Ok(new { success = true }); }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        }
+    
+    [HttpPut("{id:guid}/settings")]
+    public async Task<IActionResult> UpdateSettings(Guid id, [FromBody] UpdateChannelDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+        var channel = await _context.Channels.FirstOrDefaultAsync(c => c.Id == id);
+        if (channel == null) return NotFound(new { message = "Canal não encontrado." });
+        if (channel.OwnerId != userId) return StatusCode(403, new { message = "Apenas o proprietário pode alterar as configurações." });
+        var name = dto.Name?.Trim();
+        if (string.IsNullOrWhiteSpace(name) || name.Length < 2 || name.Length > 120) return BadRequest(new { message = "Nome inválido." });
+        if (dto.Description?.Length > 500) return BadRequest(new { message = "Descrição demasiado longa." });
+        if (!string.IsNullOrWhiteSpace(dto.PhotoUrl) && !dto.PhotoUrl.StartsWith("/uploads/images/", StringComparison.OrdinalIgnoreCase)) return BadRequest(new { message = "Foto inválida." });
+        channel.Name = name; channel.Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim(); channel.PhotoUrl = string.IsNullOrWhiteSpace(dto.PhotoUrl) ? null : dto.PhotoUrl.Trim(); channel.IsPrivate = dto.IsPrivate;
+        await _context.SaveChangesAsync();
+        return Ok(new { id=channel.Id, name=channel.Name, description=channel.Description, photoUrl=channel.PhotoUrl, isPrivate=channel.IsPrivate });
+    }
+
 }

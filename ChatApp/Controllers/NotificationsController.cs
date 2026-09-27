@@ -38,7 +38,7 @@ public class NotificationsController : ControllerBase
         var userId = CurrentUserId;
 
         var query = _db.Notifications
-            .Where(n => n.UserId == userId);
+            .Where(n => n.UserId == userId && IsUserNotification(n.Type));
 
         if (onlyUnread)
         {
@@ -78,20 +78,14 @@ public class NotificationsController : ControllerBase
     public async Task<IActionResult> GetNotificationCount()
     {
         var userId = CurrentUserId;
-
-        var count = await _db.Notifications
-            .CountAsync(n =>
-                n.UserId == userId &&
-                !n.IsRead &&
-                n.Type != NotificationType.NewMessage &&
-                n.Type != NotificationType.MeetingInvite);
-
-        return Ok(new
-        {
-            count
-        });
+        var count = await _db.Notifications.CountAsync(n => n.UserId == userId && !n.IsRead && IsUserNotification(n.Type));
+        return Ok(new { count });
     }
 
+    private static bool IsUserNotification(NotificationType type) =>
+        type == NotificationType.MissedCall ||
+        type == NotificationType.GroupInvite ||
+        type == NotificationType.ChannelInvite;
 
     // ============================================================
     // CONTADOR DE MENSAGENS
@@ -179,8 +173,7 @@ public class NotificationsController : ControllerBase
                 .Where(n =>
                     n.UserId == userId &&
                     !n.IsRead &&
-                    n.Type != NotificationType.NewMessage &&
-                    n.Type != NotificationType.MeetingInvite)
+                    IsUserNotification(n.Type))
                 .ToListAsync();
 
         foreach (var notification in unread)

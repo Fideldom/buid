@@ -51,8 +51,7 @@ public class MeetingsController : ControllerBase
         var host = await _db.Users.FindAsync(userId);
         foreach (var invitedId in dto.InviteUserIds.Distinct().Where(id => id != userId))
         {
-            await _notifications.CreateAsync(invitedId, NotificationType.MeetingInvite,
-                $"Convite para reunião: {meeting.Title}", $"{host?.FullName} convidou-o para uma reunião.", meeting.RoomCode);
+// Convites de reunião ficam disponíveis na aba Reuniões; não entram no centro de notificações.
         }
 
         return Ok(new MeetingViewDto

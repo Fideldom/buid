@@ -90,4 +90,20 @@ public class GroupsController : ControllerBase
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
         catch (UnauthorizedAccessException ex) { return StatusCode(403, new { message = ex.Message }); }
     }
+    [HttpPost("{id:guid}/reject")]
+    public async Task<IActionResult> Reject(Guid id)
+    {
+        try { await _groups.RejectInviteAsync(UserId, id); return Ok(new { success = true }); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+    }
+
+    [HttpPut("{id:guid}/settings")]
+    public async Task<IActionResult> Settings(Guid id, [FromBody] UpdateGroupSettingsDto dto)
+    {
+        try { return Ok(await _groups.UpdateSettingsAsync(UserId, id, dto)); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(403, new { message = ex.Message }); }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
 }

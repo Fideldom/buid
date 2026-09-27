@@ -30,7 +30,7 @@
 
         const elements =
             document.querySelectorAll(
-                `[data - friend - id= "${escapedId}"] .presence - dot`
+                `[data-friend-id="${escapedId}"] .presence-dot, [data-friend-id="${escapedId}"] .presence-dot, [data-user-id="${escapedId}"] .presence-dot`
             );
 
         elements.forEach((element) => {

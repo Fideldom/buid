@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using ChatApp.Models;
 using ChatApp.Services.Interfaces;
+using ChatApp.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
@@ -12,13 +13,16 @@ public class CallHub : Hub
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IPrivacyService _privacy;
+    private readonly INotificationService _notifications;
 
     private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> ActiveCalls = new();
+    private static readonly ConcurrentDictionary<string, byte> AcceptedCalls = new();
 
-    public CallHub(UserManager<ApplicationUser> userManager, IPrivacyService privacy)
+    public CallHub(UserManager<ApplicationUser> userManager, IPrivacyService privacy, INotificationService notifications)
     {
         _userManager = userManager;
         _privacy = privacy;
+        _notifications = notifications;
     }
 
     private string UserId => Context.UserIdentifier ?? Context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
@@ -78,14 +82,16 @@ public class CallHub : Hub
         if (!IsCallParticipant(callId, UserId) || !IsCallParticipant(callId, callerId))
             throw new HubException("Chamada inválida ou expirada.");
 
-        if (!accepted) ActiveCalls.TryRemove(callId, out _);
+        if (!accepted) { ActiveCalls.TryRemove(callId, out _); } else { AcceptedCalls[callId]=0; }
         await Clients.Group(UserGroup(callerId)).SendAsync("CallAnswered", callId, accepted);
     }
 
     public async Task EndCall(string otherUserId, string callId)
     {
         if (!IsCallParticipant(callId, UserId) || !IsCallParticipant(callId, otherUserId)) return;
+        var wasAccepted = AcceptedCalls.TryRemove(callId, out _);
         ActiveCalls.TryRemove(callId, out _);
+        if (!wasAccepted) await _notifications.CreateAsync(otherUserId, NotificationType.MissedCall, "Chamada perdida", "Perdeste uma chamada.", callId);
         await Clients.Group(UserGroup(otherUserId)).SendAsync("CallEnded", callId);
     }
 

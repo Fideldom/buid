@@ -141,3 +141,4 @@ C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\Chat
 C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\ChatApp\obj\Debug\net8.0\ChatApp.pdb
 C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\ChatApp\obj\Debug\net8.0\ChatApp.genruntimeconfig.cache
 C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\ChatApp\obj\Debug\net8.0\ref\ChatApp.dll
+C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\ChatApp\obj\Debug\net8.0\ChatApp.sourcelink.json

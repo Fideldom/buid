@@ -661,86 +661,40 @@ function setupFriendSearch() {
 
 async function loadNotifications() {
     try {
-        const response =
-            await fetch(
-                "/api/notifications"
-            );
-
-        if (!response.ok) {
-            return;
-        }
-
-        const notifications =
-            await response.json();
-
-        const list =
-            document.getElementById(
-                "notificationsList"
-            );
-
-        if (!list) {
-            return;
-        }
-
+        const response = await fetch("/api/notifications?onlyUnread=false", { cache: "no-store" });
+        if (!response.ok) return;
+        const notifications = (await response.json()).filter(n => ["MissedCall", "GroupInvite", "ChannelInvite"].includes(n.type));
+        const list = document.getElementById("notificationsList");
+        if (!list) return;
         list.innerHTML = "";
-
-        notifications.forEach(
-            (notification) => {
-                const item =
-                    document.createElement(
-                        "div"
-                    );
-
-                item.className =
-                    `list-group-item ${notification.isRead
-                        ? ""
-                        : "fw-bold"
-                    }`;
-
-                const isGroupInvite = notification.type === "GroupInvite";
-                item.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-start gap-2">
-                        <div>
-                            <div>${escapeHtml(notification.title || "")}</div>
-                            <small class="text-muted">${escapeHtml(notification.content || "")}</small>
-                        </div>
-                        ${isGroupInvite && notification.relatedEntityId ? `<button type="button" class="btn btn-sm btn-primary js-accept-group" data-group-id="${escapeHtml(notification.relatedEntityId)}" data-notification-id="${notification.id}">Aceitar</button>` : ""}
-                    </div>
-                `;
-
-                if (isGroupInvite) {
-                    item.querySelector(".js-accept-group")?.addEventListener("click", async (event) => {
-                        const button = event.currentTarget;
-                        button.disabled = true;
-                        const response = await fetch(`/api/groups/${button.dataset.groupId}/accept`, { method: "POST" });
-                        if (response.ok) {
-                            await fetch(`/api/notifications/${button.dataset.notificationId}/read`, { method: "POST" });
-                            button.outerHTML = '<span class="badge text-bg-success">Aceite</span>';
-                            window.ChatBadges?.notifications();
-                        } else {
-                            button.disabled = false;
-                            alert("Não foi possível aceitar o convite.");
-                        }
-                    });
-                }
-
-                list.appendChild(
-                    item
-                );
-            }
-        );
-
-        if (
-            window.ChatBadges
-        ) {
-            window.ChatBadges.notifications();
+        if (!notifications.length) {
+            list.innerHTML = '<div class="text-center text-muted py-4">Não tens novas notificações.</div>';
+            window.ChatBadges?.notifications();
+            return;
         }
-    } catch (error) {
-        console.error(
-            "Erro ao carregar notificações:",
-            error
-        );
-    }
+        notifications.forEach(n => {
+            const item = document.createElement("div");
+            item.className = `list-group-item ${n.isRead ? "" : "fw-bold"}`;
+            let actions = "";
+            if (n.type === "GroupInvite" && n.relatedEntityId) {
+                actions = `<div class="d-flex gap-2 mt-2"><button class="btn btn-sm btn-primary js-group-accept" data-group-id="${escapeHtml(n.relatedEntityId)}" data-notification-id="${n.id}">Aceitar</button><button class="btn btn-sm btn-outline-secondary js-group-reject" data-group-id="${escapeHtml(n.relatedEntityId)}" data-notification-id="${n.id}">Recusar</button></div>`;
+            } else if (n.type === "ChannelInvite" && n.relatedEntityId) {
+                actions = `<div class="d-flex gap-2 mt-2"><button class="btn btn-sm btn-primary js-channel-accept" data-invite-id="${escapeHtml(n.relatedEntityId)}" data-notification-id="${n.id}">Aceitar</button><button class="btn btn-sm btn-outline-secondary js-channel-reject" data-invite-id="${escapeHtml(n.relatedEntityId)}" data-notification-id="${n.id}">Recusar</button></div>`;
+            }
+            item.innerHTML = `<div><div>${escapeHtml(n.title || "")}</div><small class="text-muted">${escapeHtml(n.content || "")}</small>${actions}</div>`;
+            item.querySelectorAll("button").forEach(btn => btn.addEventListener("click", async () => {
+                btn.disabled = true;
+                const isGroup = btn.classList.contains("js-group-accept") || btn.classList.contains("js-group-reject");
+                const accept = btn.classList.contains("js-group-accept") || btn.classList.contains("js-channel-accept");
+                const endpoint = isGroup ? `/api/groups/${btn.dataset.groupId}/${accept ? "accept" : "reject"}` : `/api/channels/invites/${btn.dataset.inviteId}/${accept ? "accept" : "reject"}`;
+                const r = await fetch(endpoint, { method: "POST" });
+                if (r.ok) { await fetch(`/api/notifications/${btn.dataset.notificationId}/read`, { method: "POST" }); item.remove(); window.ChatBadges?.notifications(); }
+                else btn.disabled = false;
+            }));
+            list.appendChild(item);
+        });
+        window.ChatBadges?.notifications();
+    } catch (e) { console.error("Erro ao carregar notificações:", e); }
 }
 
 async function loadMeetings() {
@@ -819,7 +773,13 @@ async function loadMeetings() {
     }
 }
 
+async function loadMeetingInviteUsers() {
+    const box=document.getElementById("meetingInviteUsers"); if(!box) return;
+    try { const r=await fetch("/api/friends",{cache:"no-store"}); const friends=r.ok?await r.json():[]; box.innerHTML=friends.map(f=>`<label class="d-flex align-items-center gap-2 py-1"><input type="checkbox" value="${escapeHtml(f.userId)}"> <span>${escapeHtml(f.fullName||"Utilizador")}</span></label>`).join("")||'<small class="text-muted">Não tens amigos para convidar.</small>'; } catch { box.innerHTML='<small class="text-danger">Não foi possível carregar os amigos.</small>'; }
+}
+
 function setupMeetingCreation() {
+    loadMeetingInviteUsers();
     const button =
         document.getElementById(
             "btnCreateMeeting"
@@ -861,8 +821,7 @@ function setupMeetingCreation() {
                                     scheduledStart:
                                         start ||
                                         null,
-                                    inviteUserIds:
-                                        []
+                                    inviteUserIds: Array.from(document.querySelectorAll("#meetingInviteUsers input[type=checkbox]:checked")).map(x => x.value)
                                 }
                             )
                         }
