@@ -1,0 +1,394 @@
+@{
+    ViewData["Title"] = "Chat";
+    Layout = "_Layout";
+}
+
+<div class="app-shell">
+
+    <aside class="sidebar" id="sidebar">
+
+        <div class="sidebar-header d-flex align-items-center justify-content-between p-3">
+
+            <div class="d-flex align-items-center gap-2">
+
+                <img id="profilePhotoUrl"
+                     src="/images/default-avatar.png"
+                     class="avatar-sm"
+                     alt="Meu perfil"
+                     onerror="this.onerror=null;this.src='/images/default-avatar.png';" />
+
+                <strong id="myName" data-i18n="chat.me">Eu</strong>
+
+            </div>
+
+            <form asp-controller="Account"
+                  asp-action="Logout"
+                  method="post">
+
+                <button class="btn btn-sm btn-outline-secondary"
+                        title="Sair" data-i18n-title="chat.logout" data-i18n-title="chat.logout" data-i18n-title="chat.logout" data-i18n-title="chat.logout"
+                        type="submit">
+
+                    <i class="bi bi-box-arrow-right"></i>
+
+                </button>
+
+            </form>
+
+        </div>
+
+        <div class="tab-pane-container p-2 borders">
+
+            <div id="tab-friends"
+                 class="tab-pane-item">
+
+                <div class="input-group mb-2">
+
+                    <input id="searchInput"
+                           class="form-control form-control-sm"
+                           placeholder="Pesquisar utilizadores..." data-i18n-placeholder="chat.searchUsers" data-i18n-placeholder="chat.searchUsers" data-i18n-placeholder="chat.searchUsers" data-i18n-placeholder="chat.searchUsers"
+                           autocomplete="off" />
+
+                    <button id="searchBtn"
+                            class="btn btn-sm btn-primary"
+                            type="button">
+
+                        <i class="bi bi-search"></i>
+
+                    </button>
+
+                </div>
+
+                <div id="searchResults"></div>
+
+                <hr />
+
+                <div id="friendRequests"></div>
+
+                <div id="friendsList"
+                     class="list-group">
+                </div>
+
+            </div>
+
+            <div id="tab-notifications"
+                 class="tab-pane-item d-none">
+
+                <div id="notificationsList"
+                     class="list-group">
+                </div>
+
+            </div>
+
+            <div id="tab-meetings"
+                 class="tab-pane-item d-none">
+
+                <button class="btn btn-sm btn-primary w-100 mb-2"
+                        type="button"
+                        data-bs-toggle="modal"
+                        data-bs-target="#newMeetingModal">
+
+                    <i class="bi bi-camera-video-fill"></i>
+
+                    <span data-i18n="chat.newMeeting">Nova reunião</span>
+
+                </button>
+
+                <div id="meetingsList"
+                     class="list-group">
+                </div>
+
+            </div>
+
+            <div id="tab-channel"
+                 class="tab-pane-item d-none">
+
+                <div id="channelList"
+                     class="list-group">
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="icons">
+
+            <ul class="nav nav-tabs"
+                id="sidebarTabs">
+
+                <li class="nav-item">
+
+                    <button class="nav-link active"
+                            type="button"
+                            data-tab="friends"
+                            title="Mensagens" data-i18n-title="chat.messages" data-i18n-title="chat.messages" data-i18n-title="chat.messages" data-i18n-title="chat.messages">
+
+                        <i class="bi bi-chat-quote"></i>
+
+                        <span id="messageBadge"
+                              class="badge bg-danger d-none">
+                            0
+                        </span>
+
+                    </button>
+
+                </li>
+
+                <li class="nav-item">
+
+                    <button class="nav-link"
+                            type="button"
+                            data-tab="notifications"
+                            title="Notificações" data-i18n-title="chat.notifications" data-i18n-title="chat.notifications" data-i18n-title="chat.notifications" data-i18n-title="chat.notifications">
+
+                        <i class="bi bi-bell"></i>
+
+                        <span id="notifBadge"
+                              class="badge bg-danger d-none">
+                            0
+                        </span>
+
+                    </button>
+
+                </li>
+
+                <li class="nav-item">
+
+                    <button class="nav-link"
+                            type="button"
+                            data-tab="meetings"
+                            title="Reuniões" data-i18n-title="chat.meetings" data-i18n-title="chat.meetings" data-i18n-title="chat.meetings" data-i18n-title="chat.meetings">
+
+                        <i class="bi bi-people-fill"></i>
+
+                        <span id="meetingBadge"
+                              class="badge bg-danger d-none">
+                            0
+                        </span>
+
+                    </button>
+
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="/Groups" title="Grupos">
+                        <i class="bi bi-people"></i>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="/Status" title="Status">
+                        <i class="bi bi-circle-square"></i>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+
+                    <a class="nav-link"
+                       asp-controller="Home"
+                       asp-action="Channel"
+                       title="Canais" data-i18n-title="chat.channels" data-i18n-title="chat.channels" data-i18n-title="chat.channels" data-i18n-title="chat.channels">
+
+                        <i class="bi bi-broadcast"></i>
+
+                    </a>
+
+                </li>
+
+            </ul>
+
+        </div>
+
+    </aside>
+
+    <main class="chat-area borders">
+
+        <div id="chatEmpty"
+             class="chat-empty">
+
+            <i class="bi bi-chat-dots display-1 text-muted"></i>
+
+            <p class="text-muted">
+                <span data-i18n="chat.selectFriend"><span data-i18n="chat.selectFriend"><span data-i18n="chat.selectFriend"><span data-i18n="chat.selectFriend">Selecione um amigo para começar a conversar</span></span></span></span>
+            </p>
+
+        </div>
+
+        <div id="chatWindow"
+             class="chat-window d-none">
+
+            <div class="chat-header d-flex align-items-center justify-content-between p-2 border-bottom">
+
+                <div class="d-flex align-items-center gap-2">
+
+                    <button id="btnBackToList"
+                            class="btn btn-sm btn-outline-secondary d-md-none"
+                            title="Voltar" data-i18n-title="chat.back" data-i18n-title="chat.back" data-i18n-title="chat.back" data-i18n-title="chat.back"
+                            type="button">
+
+                        <i class="bi bi-arrow-left"></i>
+
+                    </button>
+
+                    <img id="chatFriendPhoto"
+                         class="avatar-sm"
+                         src="/images/default-avatar.png"
+                         alt="Amigo"
+                         onerror="this.onerror=null;this.src='/images/default-avatar.png';" />
+
+                    <div>
+
+                        <div id="chatFriendName"
+                             class="fw-bold">
+                        </div>
+
+                        <small id="chatFriendStatus"
+                               class="text-muted">
+                        </small>
+
+                    </div>
+
+                </div>
+
+                <div class="d-flex gap-2">
+
+                    <button id="btnAudioCall"
+                            type="button"
+                            class="btn btn-sm btn-outline-success"
+                            title="Chamada de áudio" data-i18n-title="chat.audioCall" data-i18n-title="chat.audioCall" data-i18n-title="chat.audioCall" data-i18n-title="chat.audioCall">
+
+                        <i class="bi bi-telephone-fill"></i>
+
+                    </button>
+
+                    <button id="btnVideoCall"
+                            type="button"
+                            class="btn btn-sm btn-outline-primary"
+                            title="Videochamada" data-i18n-title="chat.videoCall" data-i18n-title="chat.videoCall" data-i18n-title="chat.videoCall" data-i18n-title="chat.videoCall">
+
+                        <i class="bi bi-camera-video-fill"></i>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div id="messagesContainer"
+                 class="messages-container p-3">
+            </div>
+
+            <div class="chat-input p-2 border-top">
+
+                <div class="d-flex align-items-center gap-2">
+
+                    <label class="btn btn-sm btn-outline-secondary mb-0"
+                           title="Enviar ficheiro" data-i18n-title="chat.sendFile" data-i18n-title="chat.sendFile" data-i18n-title="chat.sendFile" data-i18n-title="chat.sendFile">
+
+                        <i class="bi bi-paperclip"></i>
+
+                        <input type="file"
+                               id="fileInput"
+                               class="d-none" />
+
+                    </label>
+
+                    <button id="btnRecordAudio"
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            title="Gravar áudio" data-i18n-title="chat.recordAudio" data-i18n-title="chat.recordAudio" data-i18n-title="chat.recordAudio" data-i18n-title="chat.recordAudio">
+
+                        <i class="bi bi-mic-fill"></i>
+
+                    </button>
+
+                    <input id="messageInput"
+                           class="form-control"
+                           placeholder="Escreva uma mensagem..." data-i18n-placeholder="chat.messagePlaceholder" data-i18n-placeholder="chat.messagePlaceholder" data-i18n-placeholder="chat.messagePlaceholder" data-i18n-placeholder="chat.messagePlaceholder"
+                           autocomplete="off" />
+
+                    <button id="btnSend"
+                            type="button"
+                            class="btn btn-primary">
+
+                        <i class="bi bi-send-fill"></i>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+</div>
+
+<div class="modal fade"
+     id="newMeetingModal"
+     tabindex="-1"
+     aria-hidden="true">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title">
+                    <span data-i18n="chat.newMeeting">Nova reunião</span>
+                </h5>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Fechar" data-i18n-aria-label="chat.close" data-i18n-aria-label="chat.close" data-i18n-aria-label="chat.close" data-i18n-aria-label="chat.close">
+                </button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <input id="meetingTitle"
+                       class="form-control mb-2"
+                       placeholder="Título da reunião" data-i18n-placeholder="chat.meetingTitle" data-i18n-placeholder="chat.meetingTitle" data-i18n-placeholder="chat.meetingTitle" data-i18n-placeholder="chat.meetingTitle"
+                       autocomplete="off" />
+
+                <label class="form-label small">
+                    <span data-i18n="chat.startOptional"><span data-i18n="chat.startOptional"><span data-i18n="chat.startOptional"><span data-i18n="chat.startOptional">Início (opcional)</span></span></span></span>
+                </label>
+
+                <input id="meetingStart"
+                       type="datetime-local"
+                       class="form-control mb-2" />
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button id="btnCreateMeeting"
+                        type="button"
+                        class="btn btn-primary">
+
+                    <span data-i18n="chat.createAndJoin"><span data-i18n="chat.createAndJoin"><span data-i18n="chat.createAndJoin"><span data-i18n="chat.createAndJoin">Criar e entrar</span></span></span></span>
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+@section Scripts {
+
+    <script src="~/js/notification-badges.js"
+            asp-append-version="true"></script>
+
+    <script src="~/js/chat.js"
+            asp-append-version="true"></script>
+
+}
