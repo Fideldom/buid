@@ -18,8 +18,13 @@
 
   async function start() {
     if (connection.state === signalR.HubConnectionState.Disconnected) {
-      try { await connection.start(); }
-      catch (e) { console.warn("[Presence] ligação falhou", e); setTimeout(start, 3000); return; }
+      try {
+        await connection.start();
+      } catch (e) {
+        console.warn("[Presence] ligação falhou", e);
+        setTimeout(start, 3000);
+        return;
+      }
     }
     window.ChatPresence?.register?.(connection);
     window.ChatPresence?.refresh?.();

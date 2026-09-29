@@ -151,7 +151,9 @@ async function markMeetingsAsRead() {
 
 // CLICAR EM NOTIFICAÇÕES
 document.addEventListener("click", (event) => {
-  const button = event.target.closest('#sidebarTabs .nav-link[data-tab="notifications"]');
+  const button = event.target.closest(
+    '#sidebarTabs .nav-link[data-tab="notifications"]',
+  );
   if (!button) return;
   markNotificationsAsRead().then(() => window.ChatBadges?.notifications());
 });

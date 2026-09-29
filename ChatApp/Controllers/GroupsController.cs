@@ -51,7 +51,19 @@ public class GroupsController : ControllerBase
     public async Task<IActionResult> Get(Guid id)
     {
         var group = await _groups.GetAsync(id, UserId);
-        return group == null ? NotFound(new { message = "Grupo não encontrado." }) : Ok(new { id = group.Id, name = group.Name, description = group.Description, photoUrl = group.PhotoUrl, ownerId = group.OwnerId, createdAt = group.CreatedAt, memberCount = group.Members.Count });
+        return group == null
+            ? NotFound(new { message = "Grupo não encontrado." })
+            : Ok(new
+            {
+                id = group.Id,
+                name = group.Name,
+                description = group.Description,
+                photoUrl = group.PhotoUrl,
+                ownerId = group.OwnerId,
+                isOwner = group.OwnerId == UserId,
+                createdAt = group.CreatedAt,
+                memberCount = group.Members.Count
+            });
     }
 
     [HttpGet("{id:guid}/members")]

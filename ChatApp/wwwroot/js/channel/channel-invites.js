@@ -245,7 +245,9 @@ function createInviteUserElement(user) {
 
   const username = escapeInviteHtml(usernameRaw);
 
-  const photoUrl = user?.profilePhotoUrl ? String(user.profilePhotoUrl).trim() : "";
+  const photoUrl = user?.profilePhotoUrl
+    ? String(user.profilePhotoUrl).trim()
+    : "";
 
   const initial = getUserInitial(fullNameRaw);
 
@@ -281,7 +283,8 @@ function createInviteUserElement(user) {
                     ${fullName}
                 </strong>
 
-                ${username
+                ${
+                  username
                     ? ` <small class="text-muted d-block">
                              @${username}
                         </small>

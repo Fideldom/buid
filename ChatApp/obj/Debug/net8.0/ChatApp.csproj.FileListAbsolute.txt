@@ -126,6 +126,7 @@ C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\Chat
 C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\ChatApp\obj\Debug\net8.0\ChatApp.MvcApplicationPartsAssemblyInfo.cache
 C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\ChatApp\obj\Debug\net8.0\ChatApp.RazorAssemblyInfo.cache
 C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\ChatApp\obj\Debug\net8.0\ChatApp.RazorAssemblyInfo.cs
+C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\ChatApp\obj\Debug\net8.0\ChatApp.sourcelink.json
 C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\ChatApp\obj\Debug\net8.0\rjimswa.dswa.cache.json
 C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\ChatApp\obj\Debug\net8.0\rjsmrazor.dswa.cache.json
 C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\ChatApp\obj\Debug\net8.0\rjsmcshtml.dswa.cache.json
@@ -141,4 +142,3 @@ C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\Chat
 C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\ChatApp\obj\Debug\net8.0\ChatApp.pdb
 C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\ChatApp\obj\Debug\net8.0\ChatApp.genruntimeconfig.cache
 C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\ChatApp\obj\Debug\net8.0\ref\ChatApp.dll
-C:\Users\PC\Desktop\Baixados\Chat\ChatApp-Fase1-Grupos-Status-Configuracoes\ChatApp\obj\Debug\net8.0\ChatApp.sourcelink.json

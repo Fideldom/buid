@@ -3,6 +3,7 @@
     "ChatApp": {
       "commandName": "Project",
       "launchBrowser": true,
+      "hotReloadEnabled": false,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },

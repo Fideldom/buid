@@ -21,4 +21,13 @@
     </PackageReference>
   </ItemGroup>
 
+  <!--
+    Uploaded runtime files must never be treated as source changes by dotnet watch.
+    Statuses and group/channel photos are stored under wwwroot/uploads and are created
+    while the application is running. Watching those files can crash Hot Reload.
+  -->
+  <ItemGroup>
+    <Content Update="wwwroot\uploads\**" Watch="false" />
+  </ItemGroup>
+
 </Project>

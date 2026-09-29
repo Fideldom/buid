@@ -133,7 +133,8 @@ async function createChannel() {
 
     // ERRO
     if (!response.ok) {
-      const message = data?.message || data?.error || "Não foi possível criar o canal.";
+      const message =
+        data?.message || data?.error || "Não foi possível criar o canal.";
 
       throw new Error(message);
     }
@@ -160,7 +161,7 @@ async function createChannel() {
       await window.ChannelUI.reload();
     }
 
-    // ABRIR CANAL CRIADO 
+    // ABRIR CANAL CRIADO
     if (data?.id && window.ChannelUI) {
       await window.ChannelUI.open(data.id);
     }
@@ -180,7 +181,7 @@ async function createChannel() {
   }
 }
 
-// LIMPAR FORMULÁRIO 
+// LIMPAR FORMULÁRIO
 function resetCreateChannelForm() {
   const nameInput = document.getElementById("newChannelName");
 

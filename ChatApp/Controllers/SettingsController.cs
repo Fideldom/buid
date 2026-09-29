@@ -36,9 +36,7 @@ public class SettingsController : Controller
         _chatHub = chatHub;
     }
 
-    // ============================================================
     // PÁGINA DE CONFIGURAÇÕES
-    // ============================================================
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -56,10 +54,7 @@ public class SettingsController : Controller
         return View(settings);
     }
 
-    // ============================================================
     // CONFIGURAÇÕES GERAIS
-    // ============================================================
-
     // GET: /Settings/Get
     [HttpGet("Get")]
     public async Task<IActionResult> Get()
@@ -109,10 +104,7 @@ public class SettingsController : Controller
         var timeFormat =
             NormalizeTimeFormat(dto.TimeFormat);
 
-        // --------------------------------------------------------
         // Validação do idioma
-        // --------------------------------------------------------
-
         var allowedLanguages =
             new HashSet<string>(
                 StringComparer.OrdinalIgnoreCase)
@@ -132,10 +124,7 @@ public class SettingsController : Controller
             });
         }
 
-        // --------------------------------------------------------
         // Validação do formato da hora
-        // --------------------------------------------------------
-
         if (timeFormat != "12h" &&
             timeFormat != "24h")
         {
@@ -146,10 +135,7 @@ public class SettingsController : Controller
             });
         }
 
-        // --------------------------------------------------------
         // Validação do fuso horário
-        // --------------------------------------------------------
-
         if (string.IsNullOrWhiteSpace(timeZone))
         {
             return BadRequest(new
@@ -169,12 +155,8 @@ public class SettingsController : Controller
             });
         }
 
-        // --------------------------------------------------------
         // Guardar
-        // --------------------------------------------------------
-
-        var settings =
-            await GetOrCreateSettingsAsync(user.Id);
+        var settings = await GetOrCreateSettingsAsync(user.Id);
 
         settings.Language = language;
         settings.TimeZone = timeZone;
@@ -187,8 +169,7 @@ public class SettingsController : Controller
         {
             success = true,
 
-            message =
-                "Configurações atualizadas com sucesso.",
+            message = "Configurações atualizadas com sucesso.",
 
             settings = new UserSettingsDto
             {
@@ -199,11 +180,7 @@ public class SettingsController : Controller
         });
     }
 
-    // ============================================================
-    // PERFIL
-    // ============================================================
-
-    // GET: /Settings/Profile
+    // PERFIL --> GET: /Settings/Profile
     [HttpGet("Profile")]
     public async Task<IActionResult> Profile()
     {
@@ -238,57 +215,46 @@ public class SettingsController : Controller
                 message = "Verifica os dados introduzidos.",
                 errors = ModelState
                     .Where(x => x.Value?.Errors.Count > 0)
-                    .ToDictionary(
-                        x => x.Key,
-                        x => x.Value!.Errors
+                    .ToDictionary(x => x.Key, x => x.Value!.Errors
                             .Select(e => e.ErrorMessage)
                             .ToArray())
             });
         }
 
-        var user =
-            await _userManager.GetUserAsync(User);
+        var user = await _userManager.GetUserAsync(User);
 
         if (user == null)
             return Unauthorized();
 
-        var fullName =
-            dto.FullName.Trim();
+        var fullName = dto.FullName.Trim();
 
         if (fullName.Length < 2)
         {
             return BadRequest(new
             {
                 success = false,
-                message =
-                    "O nome completo deve ter pelo menos 2 caracteres."
+                message = "O nome completo deve ter pelo menos 2 caracteres."
             });
         }
 
         user.FullName = fullName;
 
-        var phoneNumber =
-            string.IsNullOrWhiteSpace(dto.PhoneNumber)
+        var phoneNumber = string.IsNullOrWhiteSpace(dto.PhoneNumber)
                 ? null
                 : dto.PhoneNumber.Trim();
 
-        var currentPhoneNumber =
-            await _userManager.GetPhoneNumberAsync(user);
+        var currentPhoneNumber = await _userManager.GetPhoneNumberAsync(user);
 
         if (currentPhoneNumber != phoneNumber)
         {
-            var phoneResult =
-                await _userManager.SetPhoneNumberAsync(
-                    user,
-                    phoneNumber);
+            var phoneResult = await _userManager.SetPhoneNumberAsync(user, phoneNumber);
 
             if (!phoneResult.Succeeded)
             {
                 return BadRequest(new
                 {
                     success = false,
-                    message =
-                        "Não foi possível atualizar o número de telefone.",
+                    message = "Não foi possível atualizar o número de telefone.",
                     errors = phoneResult.Errors
                         .Select(e => e.Description)
                         .ToArray()
@@ -304,8 +270,7 @@ public class SettingsController : Controller
             return BadRequest(new
             {
                 success = false,
-                message =
-                    "Não foi possível atualizar o perfil.",
+                message = "Não foi possível atualizar o perfil.",
                 errors = updateResult.Errors
                     .Select(e => e.Description)
                     .ToArray()
@@ -315,8 +280,7 @@ public class SettingsController : Controller
         return Ok(new
         {
             success = true,
-            message =
-                "Perfil atualizado com sucesso.",
+            message = "Perfil atualizado com sucesso.",
 
             profile = new ProfileDto
             {
@@ -331,10 +295,7 @@ public class SettingsController : Controller
         });
     }
 
-    // ============================================================
     // FOTO DE PERFIL
-    // ============================================================
-
     // POST: /Settings/Profile/Photo
     [HttpPost("Profile/Photo")]
     [ValidateAntiForgeryToken]
@@ -350,14 +311,12 @@ public class SettingsController : Controller
             });
         }
 
-        var user =
-            await _userManager.GetUserAsync(User);
+        var user = await _userManager.GetUserAsync(User);
 
         if (user == null)
             return Unauthorized();
 
-        var allowedExtensions =
-            new[]
+        var allowedExtensions = new[]
             {
                 ".jpg",
                 ".jpeg",
@@ -365,45 +324,35 @@ public class SettingsController : Controller
                 ".webp"
             };
 
-        var extension =
-            Path.GetExtension(photo.FileName)
-                .ToLowerInvariant();
+        var extension = Path.GetExtension(photo.FileName).ToLowerInvariant();
 
         if (!allowedExtensions.Contains(extension))
         {
             return BadRequest(new
             {
                 success = false,
-                message =
-                    "Formato de imagem não suportado. Usa JPG, PNG ou WebP."
+                message = "Formato de imagem não suportado. Usa JPG, PNG ou WebP."
             });
         }
 
-        const long maxFileSize =
-            5 * 1024 * 1024;
+        const long maxFileSize = 5 * 1024 * 1024;
 
         if (photo.Length > maxFileSize)
         {
             return BadRequest(new
             {
                 success = false,
-                message =
-                    "A imagem não pode ultrapassar 5 MB."
+                message = "A imagem não pode ultrapassar 5 MB."
             });
         }
 
-        var (url, _, _) =
-            await _fileStorage.SaveFileAsync(
-                photo,
-                "photos");
+        var (url, _, _) = await _fileStorage.SaveFileAsync(photo, "photos");
 
-        var oldPhotoUrl =
-            user.ProfilePhotoUrl;
+        var oldPhotoUrl = user.ProfilePhotoUrl;
 
         user.ProfilePhotoUrl = url;
 
-        var result =
-            await _userManager.UpdateAsync(user);
+        var result = await _userManager.UpdateAsync(user);
 
         if (!result.Succeeded)
         {
@@ -412,8 +361,7 @@ public class SettingsController : Controller
             return BadRequest(new
             {
                 success = false,
-                message =
-                    "Não foi possível atualizar a foto de perfil.",
+                message = "Não foi possível atualizar a foto de perfil.",
                 errors = result.Errors
                     .Select(e => e.Description)
                     .ToArray()
@@ -428,51 +376,39 @@ public class SettingsController : Controller
         return Ok(new
         {
             success = true,
-            message =
-                "Foto de perfil atualizada com sucesso.",
+            message = "Foto de perfil atualizada com sucesso.",
             url
         });
     }
 
-    // ============================================================
     // PRIVACIDADE
-    // ============================================================
 
     // GET: /Settings/Privacy
     [HttpGet("Privacy")]
     public async Task<IActionResult> GetPrivacy()
     {
-        var user =
-            await _userManager.GetUserAsync(User);
+        var user = await _userManager.GetUserAsync(User);
 
         if (user == null)
             return Unauthorized();
 
-        var settings =
-            await GetOrCreateSettingsAsync(user.Id);
+        var settings = await GetOrCreateSettingsAsync(user.Id);
 
         return Ok(new
         {
-            profileVisibility =
-                settings.ProfileVisibility,
+            profileVisibility = settings.ProfileVisibility,
 
-            onlineStatusVisibility =
-                settings.OnlineStatusVisibility,
+            onlineStatusVisibility = settings.OnlineStatusVisibility,
 
-            lastSeenVisibility =
-                settings.LastSeenVisibility,
+            lastSeenVisibility = settings.LastSeenVisibility,
 
-            messagePrivacy =
-                settings.MessagePrivacy,
+            messagePrivacy = settings.MessagePrivacy,
 
-            callPrivacy =
-                settings.CallPrivacy,
+            callPrivacy = settings.CallPrivacy,
 
-            friendRequestPrivacy =
-                settings.FriendRequestPrivacy,
+            friendRequestPrivacy = settings.FriendRequestPrivacy,
 
-            discoverable =
-                settings.Discoverable
+            discoverable = settings.Discoverable
         });
     }
 
@@ -487,19 +423,16 @@ public class SettingsController : Controller
             return BadRequest(new
             {
                 success = false,
-                message =
-                    "Os dados enviados são inválidos."
+                message = "Os dados enviados são inválidos."
             });
         }
 
-        var user =
-            await _userManager.GetUserAsync(User);
+        var user = await _userManager.GetUserAsync(User);
 
         if (user == null)
             return Unauthorized();
 
-        var allowedVisibility =
-            new HashSet<string>(
+        var allowedVisibility = new HashSet<string>(
                 StringComparer.OrdinalIgnoreCase)
             {
                 "everyone",
@@ -515,60 +448,42 @@ public class SettingsController : Controller
                 "nobody"
             };
 
-        var profileVisibility =
-            NormalizePrivacyValue(
-                dto.ProfileVisibility);
+        var profileVisibility = NormalizePrivacyValue(dto.ProfileVisibility);
 
-        var onlineStatusVisibility =
-            NormalizePrivacyValue(
-                dto.OnlineStatusVisibility);
+        var onlineStatusVisibility = NormalizePrivacyValue(dto.OnlineStatusVisibility);
 
-        var lastSeenVisibility =
-            NormalizePrivacyValue(
-                dto.LastSeenVisibility);
+        var lastSeenVisibility = NormalizePrivacyValue(dto.LastSeenVisibility);
 
-        var messagePrivacy =
-            NormalizePrivacyValue(
-                dto.MessagePrivacy);
+        var messagePrivacy = NormalizePrivacyValue(dto.MessagePrivacy);
 
-        var callPrivacy =
-            NormalizePrivacyValue(
-                dto.CallPrivacy);
+        var callPrivacy = NormalizePrivacyValue(dto.CallPrivacy);
 
-        var friendRequestPrivacy =
-            NormalizePrivacyValue(
-                dto.FriendRequestPrivacy);
+        var friendRequestPrivacy = NormalizePrivacyValue(dto.FriendRequestPrivacy);
 
-        if (!allowedVisibility.Contains(
-                profileVisibility))
+        if (!allowedVisibility.Contains(profileVisibility))
         {
             return BadRequest(new
             {
                 success = false,
-                message =
-                    "Valor inválido para visibilidade do perfil."
+                message = "Valor inválido para visibilidade do perfil."
             });
         }
 
-        if (!allowedVisibility.Contains(
-                onlineStatusVisibility))
+        if (!allowedVisibility.Contains(onlineStatusVisibility))
         {
             return BadRequest(new
             {
                 success = false,
-                message =
-                    "Valor inválido para visibilidade do estado online."
+                message = "Valor inválido para visibilidade do estado online."
             });
         }
 
-        if (!allowedVisibility.Contains(
-                lastSeenVisibility))
+        if (!allowedVisibility.Contains(lastSeenVisibility))
         {
             return BadRequest(new
             {
                 success = false,
-                message =
-                    "Valor inválido para visibilidade do último acesso."
+                message = "Valor inválido para visibilidade do último acesso."
             });
         }
 
@@ -578,70 +493,52 @@ public class SettingsController : Controller
             return BadRequest(new
             {
                 success = false,
-                message =
-                    "Valor inválido para privacidade das mensagens."
+                message = "Valor inválido para privacidade das mensagens."
             });
         }
 
-        if (!allowedVisibility.Contains(
-                callPrivacy))
+        if (!allowedVisibility.Contains(callPrivacy))
         {
             return BadRequest(new
             {
                 success = false,
-                message =
-                    "Valor inválido para privacidade das chamadas."
+                message = "Valor inválido para privacidade das chamadas."
             });
         }
 
-        if (!allowedFriendRequest.Contains(
-                friendRequestPrivacy))
+        if (!allowedFriendRequest.Contains(friendRequestPrivacy))
         {
             return BadRequest(new
             {
                 success = false,
-                message =
-                    "Valor inválido para pedidos de amizade."
+                message = "Valor inválido para pedidos de amizade."
             });
         }
 
-        var settings =
-            await GetOrCreateSettingsAsync(user.Id);
+        var settings = await GetOrCreateSettingsAsync(user.Id);
 
-        var previousOnlineVisibility =
-            settings.OnlineStatusVisibility;
+        var previousOnlineVisibility = settings.OnlineStatusVisibility;
 
-        settings.ProfileVisibility =
-            profileVisibility;
+        settings.ProfileVisibility = profileVisibility;
 
-        settings.OnlineStatusVisibility =
-            onlineStatusVisibility;
+        settings.OnlineStatusVisibility = onlineStatusVisibility;
 
-        settings.LastSeenVisibility =
-            lastSeenVisibility;
+        settings.LastSeenVisibility = lastSeenVisibility;
 
-        settings.MessagePrivacy =
-            messagePrivacy;
+        settings.MessagePrivacy = messagePrivacy;
 
-        settings.CallPrivacy =
-            callPrivacy;
+        settings.CallPrivacy = callPrivacy;
 
-        settings.FriendRequestPrivacy =
-            friendRequestPrivacy;
+        settings.FriendRequestPrivacy = friendRequestPrivacy;
 
-        settings.Discoverable =
-            dto.Discoverable;
+        settings.Discoverable = dto.Discoverable;
 
-        settings.UpdatedAt =
-            DateTime.UtcNow;
+        settings.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
 
-        // --------------------------------------------------------
         // Se a visibilidade do estado online mudou,
         // atualizamos imediatamente os amigos.
-        // --------------------------------------------------------
-
         if (!string.Equals(
                 previousOnlineVisibility,
                 onlineStatusVisibility,
@@ -654,20 +551,15 @@ public class SettingsController : Controller
         return Ok(new
         {
             success = true,
-            message =
-                "Configurações de privacidade atualizadas com sucesso."
+            message = "Configurações de privacidade atualizadas com sucesso."
         });
     }
 
-    // ============================================================
     // PRESENÇA APÓS ALTERAÇÃO DA PRIVACIDADE
-    // ============================================================
-
     private async Task NotifyPresenceVisibilityChangedAsync(
         string userId)
     {
-        var user =
-            await _context.Users
+        var user = await _context.Users
                 .AsNoTracking()
                 .FirstOrDefaultAsync(
                     u => u.Id == userId);
@@ -675,8 +567,7 @@ public class SettingsController : Controller
         if (user == null)
             return;
 
-        var friendIds =
-            await _context.Friendships
+        var friendIds = await _context.Friendships
                 .AsNoTracking()
                 .Where(f =>
                     f.Status == FriendshipStatus.Accepted &&
@@ -692,91 +583,53 @@ public class SettingsController : Controller
 
         foreach (var friendId in friendIds)
         {
-            var canView =
-                await _privacy.CanViewOnlineStatusAsync(
-                    userId,
-                    friendId);
+            var canView = await _privacy.CanViewOnlineStatusAsync(userId, friendId);
 
             await _chatHub
                 .Clients
                 .Group(ChatHub.UserGroup(friendId))
-                .SendAsync(
-                    "FriendPresenceChanged",
-                    userId,
-                    canView && user.IsOnline);
+                .SendAsync("FriendPresenceChanged", userId, canView && user.IsOnline);
         }
     }
 
-    // ============================================================
     // SETTINGS
-    // ============================================================
-
     private async Task<UserSettings>
-        GetOrCreateSettingsAsync(
-            string userId)
+        GetOrCreateSettingsAsync(string userId)
     {
-        var settings =
-            await _context.UserSettings
-                .FirstOrDefaultAsync(
-                    s => s.UserId == userId);
+        var settings = await _context.UserSettings
+                .FirstOrDefaultAsync(s => s.UserId == userId);
 
         if (settings != null)
             return settings;
 
-        var now =
-            DateTime.UtcNow;
+        var now = DateTime.UtcNow;
 
         settings = new UserSettings
         {
             Id = Guid.NewGuid(),
-
             UserId = userId,
-
             Language = "pt",
-
-            TimeZone =
-                "Africa/Luanda",
-
-            TimeFormat =
-                "24h",
-
-            ProfileVisibility =
-                "everyone",
-
-            OnlineStatusVisibility =
-                "everyone",
-
-            LastSeenVisibility =
-                "everyone",
-
-            MessagePrivacy =
-                "everyone",
-
-            CallPrivacy =
-                "everyone",
-
-            FriendRequestPrivacy =
-                "everyone",
-
-            Discoverable =
-                true,
-
+            TimeZone = "Africa/Luanda",
+            TimeFormat = "24h",
+            ProfileVisibility = "everyone",
+            OnlineStatusVisibility = "everyone",
+            LastSeenVisibility = "everyone",
+            MessagePrivacy = "everyone",
+            CallPrivacy = "everyone",
+            FriendRequestPrivacy = "everyone",
+            Discoverable = true,
             CreatedAt = now,
-
             UpdatedAt = now
         };
 
-        _context.UserSettings.Add(
-            settings);
+        _context.UserSettings.Add(settings);
 
         await _context.SaveChangesAsync();
 
         return settings;
     }
 
-    // ============================================================
     // NORMALIZAÇÃO
-    // ============================================================
 
     private static string NormalizeLanguage(
         string? value)
@@ -820,10 +673,7 @@ public class SettingsController : Controller
             .ToLowerInvariant();
     }
 
-    // ============================================================
     // FUSOS SUPORTADOS PELO CHATAPP
-    // ============================================================
-
     private static bool IsSupportedTimeZone(
         string timeZone)
     {

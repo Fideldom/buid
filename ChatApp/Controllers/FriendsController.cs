@@ -35,10 +35,7 @@ public class FriendsController : ControllerBase
     private string CurrentUserId =>
         _userManager.GetUserId(User)!;
 
-    // ============================================================
     // LISTAR AMIGOS
-    // ============================================================
-
     [HttpGet]
     public async Task<IActionResult> GetFriends()
     {
@@ -117,10 +114,7 @@ public class FriendsController : ControllerBase
         return Ok(result);
     }
 
-    // ============================================================
     // PEDIDOS DE AMIZADE
-    // ============================================================
-
     [HttpGet("requests")]
     public async Task<IActionResult> GetPendingRequests()
     {
@@ -191,10 +185,7 @@ public class FriendsController : ControllerBase
         return Ok(result);
     }
 
-    // ============================================================
     // PESQUISAR UTILIZADORES
-    // ============================================================
-
     [HttpGet("search")]
     public async Task<IActionResult> Search(
         [FromQuery] string q)
@@ -265,10 +256,7 @@ public class FriendsController : ControllerBase
         return Ok(result);
     }
 
-    // ============================================================
     // ENVIAR PEDIDO
-    // ============================================================
-
     [HttpPost("request")]
     public async Task<IActionResult> SendRequest(
         FriendRequestDto dto)
@@ -344,10 +332,7 @@ public class FriendsController : ControllerBase
         });
     }
 
-    // ============================================================
     // ACEITAR
-    // ============================================================
-
     [HttpPost("{friendshipId:int}/accept")]
     public async Task<IActionResult> Accept(
         int friendshipId)
@@ -388,10 +373,7 @@ public class FriendsController : ControllerBase
         });
     }
 
-    // ============================================================
     // REJEITAR
-    // ============================================================
-
     [HttpPost("{friendshipId:int}/reject")]
     public async Task<IActionResult> Reject(
         int friendshipId)
@@ -422,10 +404,7 @@ public class FriendsController : ControllerBase
         });
     }
 
-    // ============================================================
     // REMOVER AMIZADE
-    // ============================================================
-
     [HttpDelete("{friendshipId:int}")]
     public async Task<IActionResult> Remove(
         int friendshipId)

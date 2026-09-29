@@ -1,241 +1,143 @@
 "use strict";
 
 (function () {
-    function escapeSelectorValue(value) {
-        const stringValue = String(value);
+  function escapeSelectorValue(value) {
+    const stringValue = String(value);
 
-        if (
-            typeof CSS !== "undefined" &&
-            typeof CSS.escape === "function"
-        ) {
-            return CSS.escape(stringValue);
-        }
-
-        return stringValue.replace(
-            /["\\]/g,
-            "\\$&"
-        );
+    if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+      return CSS.escape(stringValue);
     }
 
-    function updateFriendElements(
-        userId,
-        isOnline
-    ) {
-        if (!userId) {
-            return;
-        }
+    return stringValue.replace(/["\\]/g, "\\$&");
+  }
 
-        const escapedId =
-            escapeSelectorValue(userId);
-
-        const elements =
-            document.querySelectorAll(
-                `[data-friend-id="${escapedId}"] .presence-dot, [data-friend-id="${escapedId}"] .presence-dot, [data-user-id="${escapedId}"] .presence-dot`
-            );
-
-        elements.forEach((element) => {
-            const online =
-                Boolean(isOnline);
-
-            element.classList.toggle(
-                "bg-success",
-                online
-            );
-
-            element.classList.toggle(
-                "bg-secondary",
-                !online
-            );
-
-            element.dataset.online =
-                online
-                    ? "true"
-                    : "false";
-        });
-
-        updateCurrentChatStatus(
-            userId,
-            Boolean(isOnline)
-        );
+  function updateFriendElements(userId, isOnline) {
+    if (!userId) {
+      return;
     }
 
-    function updateCurrentChatStatus(
-        userId,
-        isOnline
-    ) {
-        const getCurrentFriendId =
-            window.getCurrentFriendId;
+    const escapedId = escapeSelectorValue(userId);
 
-        if (
-            typeof getCurrentFriendId !==
-            "function"
-        ) {
-            return;
-        }
+    const elements = document.querySelectorAll(
+      `[data-friend-id="${escapedId}"] .presence-dot, [data-friend-id="${escapedId}"] .presence-dot, [data-user-id="${escapedId}"] .presence-dot`,
+    );
 
-        const currentFriendId =
-            getCurrentFriendId();
+    elements.forEach((element) => {
+      const online = Boolean(isOnline);
 
-        if (
-            !currentFriendId ||
-            String(currentFriendId) !==
-                String(userId)
-        ) {
-            return;
-        }
+      element.classList.toggle("bg-success", online);
 
-        const status =
-            document.getElementById(
-                "chatFriendStatus"
-            );
+      element.classList.toggle("bg-secondary", !online);
 
-        if (!status) {
-            return;
-        }
+      element.dataset.online = online ? "true" : "false";
+    });
 
-        status.textContent =
-            isOnline
-                ? "online"
-                : "offline";
+    updateCurrentChatStatus(userId, Boolean(isOnline));
+  }
 
-        status.classList.toggle(
-            "text-success",
-            isOnline
-        );
+  function updateCurrentChatStatus(userId, isOnline) {
+    const getCurrentFriendId = window.getCurrentFriendId;
 
-        status.classList.toggle(
-            "text-secondary",
-            !isOnline
-        );
+    if (typeof getCurrentFriendId !== "function") {
+      return;
     }
 
-    function update(
-        userId,
-        isOnline
-    ) {
-        updateFriendElements(
-            userId,
-            isOnline
-        );
+    const currentFriendId = getCurrentFriendId();
+
+    if (!currentFriendId || String(currentFriendId) !== String(userId)) {
+      return;
     }
 
-    function applyFriendsPresence(
-        friends
-    ) {
-        if (!Array.isArray(friends)) {
-            return;
-        }
+    const status = document.getElementById("chatFriendStatus");
 
-        friends.forEach((friend) => {
-            if (!friend?.userId) {
-                return;
-            }
-
-            update(
-                friend.userId,
-                Boolean(friend.isOnline)
-            );
-        });
+    if (!status) {
+      return;
     }
 
-    async function refresh() {
-        try {
-            const response =
-                await fetch(
-                    "/api/friends",
-                    {
-                        method: "GET",
-                        credentials: "same-origin",
-                        cache: "no-store"
-                    }
-                );
+    status.textContent = isOnline ? "online" : "offline";
 
-            if (!response.ok) {
-                return;
-            }
+    status.classList.toggle("text-success", isOnline);
 
-            const friends =
-                await response.json();
+    status.classList.toggle("text-secondary", !isOnline);
+  }
 
-            applyFriendsPresence(
-                friends
-            );
-        } catch (error) {
-            console.error(
-                "[Presence] Erro ao atualizar presença:",
-                error
-            );
-        }
+  function update(userId, isOnline) {
+    updateFriendElements(userId, isOnline);
+  }
+
+  function applyFriendsPresence(friends) {
+    if (!Array.isArray(friends)) {
+      return;
     }
 
-    function getConnection() {
-        if (
-            window.ChatConnection
-        ) {
-            return window.ChatConnection;
-        }
+    friends.forEach((friend) => {
+      if (!friend?.userId) {
+        return;
+      }
 
-        return null;
+      update(friend.userId, Boolean(friend.isOnline));
+    });
+  }
+
+  async function refresh() {
+    try {
+      const response = await fetch("/api/friends", {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const friends = await response.json();
+
+      applyFriendsPresence(friends);
+    } catch (error) {
+      console.error("[Presence] Erro ao atualizar presença:", error);
+    }
+  }
+
+  function getConnection() {
+    if (window.ChatConnection) {
+      return window.ChatConnection;
     }
 
-    function isConnected() {
-        const connection =
-            getConnection();
+    return null;
+  }
 
-        if (
-            !connection ||
-            typeof signalR ===
-                "undefined"
-        ) {
-            return false;
-        }
+  function isConnected() {
+    const connection = getConnection();
 
-        return (
-            connection.state ===
-            signalR.HubConnectionState.Connected
-        );
+    if (!connection || typeof signalR === "undefined") {
+      return false;
     }
 
-    function register(
-        connection
-    ) {
-        if (!connection) {
-            return;
-        }
+    return connection.state === signalR.HubConnectionState.Connected;
+  }
 
-        // Evita duplicação caso este método seja chamado
-        // novamente.
-        connection.off(
-            "FriendPresenceChanged"
-        );
-
-        connection.on(
-            "FriendPresenceChanged",
-            (
-                userId,
-                isOnline
-            ) => {
-                console.log(
-                    "[Presence]",
-                    userId,
-                    isOnline
-                        ? "online"
-                        : "offline"
-                );
-
-                update(
-                    userId,
-                    isOnline
-                );
-            }
-        );
+  function register(connection) {
+    if (!connection) {
+      return;
     }
 
-    window.ChatPresence = {
-        update,
-        refresh,
-        register,
-        isConnected,
-        getConnection
-    };
+    // Evita duplicação caso este método seja chamado
+    // novamente.
+    connection.off("FriendPresenceChanged");
+
+    connection.on("FriendPresenceChanged", (userId, isOnline) => {
+      console.log("[Presence]", userId, isOnline ? "online" : "offline");
+
+      update(userId, isOnline);
+    });
+  }
+
+  window.ChatPresence = {
+    update,
+    refresh,
+    register,
+    isConnected,
+    getConnection,
+  };
 })();
