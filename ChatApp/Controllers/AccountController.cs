@@ -73,6 +73,21 @@ public class AccountController : Controller
         if (!ModelState.IsValid) return View(dto);
 
         var result = await _signInManager.PasswordSignInAsync(dto.Email, dto.Password, dto.RememberMe, lockoutOnFailure: true);
+        if (result.RequiresTwoFactor)
+        {
+            return RedirectToAction(nameof(TwoFactorLogin), new
+            {
+                rememberMe = dto.RememberMe,
+                returnUrl = Url.Action("Index", "Home")
+            });
+        }
+
+        if (result.IsLockedOut)
+        {
+            ModelState.AddModelError(string.Empty, "A conta está temporariamente bloqueada. Tenta novamente mais tarde.");
+            return View(dto);
+        }
+
         if (!result.Succeeded)
         {
             ModelState.AddModelError(string.Empty, "E-mail ou palavra-passe inválidos.");
@@ -80,6 +95,62 @@ public class AccountController : Controller
         }
 
         return RedirectToAction("Index", "Home");
+    }
+
+    [AllowAnonymous]
+    [HttpGet]
+    public IActionResult TwoFactorLogin(bool rememberMe = false, string? returnUrl = null)
+    {
+        ViewData["RememberMe"] = rememberMe;
+        ViewData["ReturnUrl"] = returnUrl;
+        return View();
+    }
+
+    [AllowAnonymous]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> TwoFactorLogin(TwoFactorLoginDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            ViewData["RememberMe"] = dto.RememberMe;
+            ViewData["ReturnUrl"] = dto.ReturnUrl;
+            return View(dto);
+        }
+
+        var code = dto.Code.Trim().Replace(" ", string.Empty).Replace("-", string.Empty);
+        var result = await _signInManager.TwoFactorAuthenticatorSignInAsync(
+            code,
+            dto.RememberMe,
+            rememberClient: false);
+
+        // if (!result.Succeeded && code.Contains("-", StringComparison.Ordinal))
+        // {
+        //     result = await _signInManager.TwoFactorRecoveryCodeSignInAsync(
+        //         code,
+        //         dto.RememberMe);
+        // }
+
+        if (result.Succeeded)
+        {
+            if (!string.IsNullOrWhiteSpace(dto.ReturnUrl) && Url.IsLocalUrl(dto.ReturnUrl))
+                return Redirect(dto.ReturnUrl);
+
+            return RedirectToAction("Index", "Home");
+        }
+
+        if (result.IsLockedOut)
+        {
+            ModelState.AddModelError(string.Empty, "A conta está temporariamente bloqueada.");
+        }
+        else
+        {
+            ModelState.AddModelError(string.Empty, "O código de autenticação é inválido.");
+        }
+
+        ViewData["RememberMe"] = dto.RememberMe;
+        ViewData["ReturnUrl"] = dto.ReturnUrl;
+        return View(dto);
     }
 
     [Authorize]

@@ -1,290 +1,311 @@
 "use strict";
 
 /*
-  CHATAPP — CHANNEL POSTS
-  Publicações dos canais
+ * CHATAPP — CHANNEL POSTS
+ * Publicações dos canais
  */
 
 const POSTS_API = "/api/posts";
 
 document.addEventListener("DOMContentLoaded", () => {
-  setupPostEvents();
+    setupPostEvents();
 });
 
 // EVENTOS
 
 function setupPostEvents() {
-  document.addEventListener("click", async (event) => {
-    // PUBLICAR
-    const publishButton = event.target.closest("#btnPublishPost");
+    document.addEventListener("click", async (event) => {
+        // PUBLICAR
+        const publishButton = event.target.closest("#btnPublishPost");
 
-    if (publishButton) {
-      event.preventDefault();
+        if (publishButton) {
+            event.preventDefault();
 
-      if (!ChannelUI.canPublish()) {
-        showPostMessage(
-          "Apenas administradores e o proprietário podem publicar.",
-          "danger",
-        );
+            if (!ChannelUI.canPublish()) {
+                showPostMessage(
+                    "Apenas administradores e o proprietário podem publicar.",
+                    "danger",
+                );
 
-        return;
-      }
+                return;
+            }
 
-      await handleCreatePost();
+            await handleCreatePost();
 
-      return;
-    }
+            return;
+        }
 
-    // CURTIR
-    const likeButton = event.target.closest("[data-action='like-post']");
+        // CURTIR
+        const likeButton = event.target.closest("[data-action='like-post']");
 
-    if (likeButton) {
-      event.preventDefault();
+        if (likeButton) {
+            event.preventDefault();
 
-      const postId = likeButton.dataset.postId;
+            const postId = likeButton.dataset.postId;
 
-      if (postId) {
-        await toggleLikePost(postId, likeButton);
-      }
+            if (postId) {
+                await toggleLikePost(postId, likeButton);
+            }
 
-      return;
-    }
+            return;
+        }
 
-    // PARTILHAR
-    const shareButton = event.target.closest("[data-action='share-post']");
+        // PARTILHAR
+        const shareButton = event.target.closest("[data-action='share-post']");
 
-    if (shareButton) {
-      event.preventDefault();
+        if (shareButton) {
+            event.preventDefault();
 
-      const postId = shareButton.dataset.postId;
+            const postId = shareButton.dataset.postId;
 
-      if (postId) {
-        await sharePost(postId);
-      }
+            if (postId) {
+                await sharePost(postId);
+            }
 
-      return;
-    }
-  });
+            return;
+        }
+    });
 }
 
 // PUBLICAR
 
 async function handleCreatePost() {
-  if (!ChannelUI.canPublish()) {
-    showPostMessage(
-      "Apenas administradores e o proprietário podem publicar.",
-      "danger",
-    );
-
-    return;
-  }
-
-  const channelId = ChannelUI.getCurrentId();
-
-  if (!channelId) {
-    showPostMessage("Nenhum canal selecionado.", "danger");
-
-    return;
-  }
-
-  // PEGAR DADOS DIRETAMENTE DO HTML
-
-  const contentInput = document.getElementById("postContent");
-
-  const imageInput = document.getElementById("postImageInput");
-
-  const content = contentInput?.value?.trim() || "";
-
-  /* IMPORTANTE:  
-    O input de imagem é FILE.
-    Portanto não podemos mandar o objeto File
-    diretamente como imageUrl.
-    Por enquanto pegamos o arquivo selecionado.
-   */
-
-  const file = imageInput?.files?.[0] || null;
-
-  // VALIDAR
-
-  if (!content && !file) {
-    showPostMessage("A publicação precisa ter texto ou imagem.", "warning");
-
-    return;
-  }
-
-  const publishButton = document.getElementById("btnPublishPost");
-
-  setButtonLoading(publishButton, true, "Publicando...");
-
-  try {
-    /*
-      CASO TENHA IMAGEM   
-      O teu backend atual está esperando imageUrl.  
-      Como ainda não temos aqui um endpoint de upload,
-      vamos primeiro publicar texto normalmente. 
-      Se houver imagem, precisamos posteriormente
-      conectar ao Supabase/Storage ou ao endpoint
-      de upload do backend.
-     */
-
-    let imageUrl = null;
-
-    if (file) {
-      /*
-        Se o backend já tiver endpoint de upload,
-        podemos ligar aqui posteriormente.
-        Por enquanto avisamos o utilizador.
-       */
-
-      if (!content) {
+    if (!ChannelUI.canPublish()) {
         showPostMessage(
-          "O upload de imagens ainda precisa ser ligado ao Storage.",
-          "warning",
+            "Apenas administradores e o proprietário podem publicar.",
+            "danger",
         );
 
         return;
-      }
     }
 
-    // ENVIAR PARA API
+    const channelId = ChannelUI.getCurrentId();
 
-    const response = await fetch(POSTS_API, {
-      method: "POST",
+    if (!channelId) {
+        showPostMessage("Nenhum canal selecionado.", "danger");
 
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-
-      credentials: "same-origin",
-
-      body: JSON.stringify({
-        channelId: channelId,
-        content: content,
-        imageUrl: imageUrl,
-      }),
-    });
-
-    const data = await response.json().catch(() => null);
-
-    // ERROS
-
-    if (response.status === 401) {
-      showPostMessage(data?.message || "Você não está autenticado.", "danger");
-
-      return;
+        return;
     }
 
-    if (response.status === 403) {
-      showPostMessage(
-        data?.message || "Você não possui permissão para publicar.",
-        "danger",
-      );
+    // =================================================
+    // PEGAR DADOS DIRETAMENTE DO HTML
+    // =================================================
 
-      return;
+    const contentInput = document.getElementById("postContent");
+
+    const imageInput = document.getElementById("postImageInput");
+
+    const content = contentInput?.value?.trim() || "";
+
+    /*
+     * IMPORTANTE:
+     *
+     * O input de imagem é FILE.
+     * Portanto não podemos mandar o objeto File
+     * diretamente como imageUrl.
+     *
+     * Por enquanto pegamos o arquivo selecionado.
+     */
+
+    const file = imageInput?.files?.[0] || null;
+
+    // =================================================
+    // VALIDAR
+    // =================================================
+
+    if (!content && !file) {
+        showPostMessage("A publicação precisa ter texto ou imagem.", "warning");
+
+        return;
     }
 
-    if (!response.ok) {
-      throw new Error(
-        data?.message || data?.error || `Erro ao publicar: ${response.status}`,
-      );
+    const publishButton = document.getElementById("btnPublishPost");
+
+    setButtonLoading(publishButton, true, "Publicando...");
+
+    try {
+        /*
+         * =================================================
+         * CASO TENHA IMAGEM
+         * =================================================
+         *
+         * O teu backend atual está esperando imageUrl.
+         *
+         * Como ainda não temos aqui um endpoint de upload,
+         * vamos primeiro publicar texto normalmente.
+         *
+         * Se houver imagem, precisamos posteriormente
+         * conectar ao Supabase/Storage ou ao endpoint
+         * de upload do backend.
+         */
+
+        let imageUrl = null;
+
+        if (file) {
+            /*
+             * Se o backend já tiver endpoint de upload,
+             * podemos ligar aqui posteriormente.
+             *
+             * Por enquanto avisamos o utilizador.
+             */
+
+            if (!content) {
+                showPostMessage(
+                    "O upload de imagens ainda precisa ser ligado ao Storage.",
+                    "warning",
+                );
+
+                return;
+            }
+        }
+
+        // =================================================
+        // ENVIAR PARA API
+        // =================================================
+
+        const response = await fetch(POSTS_API, {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+            },
+
+            credentials: "same-origin",
+
+            body: JSON.stringify({
+                channelId: channelId,
+                content: content,
+                imageUrl: imageUrl,
+            }),
+        });
+
+        const data = await response.json().catch(() => null);
+
+        // =================================================
+        // ERROS
+        // =================================================
+
+        if (response.status === 401) {
+            showPostMessage(data?.message || "Você não está autenticado.", "danger");
+
+            return;
+        }
+
+        if (response.status === 403) {
+            showPostMessage(
+                data?.message || "Você não possui permissão para publicar.",
+                "danger",
+            );
+
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                data?.message || data?.error || `Erro ao publicar: ${response.status}`,
+            );
+        }
+
+        // =================================================
+        // LIMPAR
+        // =================================================
+
+        if (contentInput) {
+            contentInput.value = "";
+        }
+
+        if (imageInput) {
+            imageInput.value = "";
+        }
+
+        showPostMessage("Publicação criada com sucesso.", "success");
+
+        // =================================================
+        // RECARREGAR POSTS
+        // =================================================
+
+        await loadChannelPosts(channelId);
+    } catch (error) {
+        console.error("Erro ao publicar:", error);
+
+        showPostMessage(error.message || "Não foi possível publicar.", "danger");
+    } finally {
+        setButtonLoading(publishButton, false, "Publicar");
     }
-
-    // LIMPAR
-
-    if (contentInput) {
-      contentInput.value = "";
-    }
-
-    if (imageInput) {
-      imageInput.value = "";
-    }
-
-    showPostMessage("Publicação criada com sucesso.", "success");
-
-    // RECARREGAR POSTS
-
-    await loadChannelPosts(channelId);
-  } catch (error) {
-    console.error("Erro ao publicar:", error);
-
-    showPostMessage(error.message || "Não foi possível publicar.", "danger");
-  } finally {
-    setButtonLoading(publishButton, false, "Publicar");
-  }
 }
 
 // CARREGAR PUBLICAÇÕES
 
 async function loadChannelPosts(channelId = null) {
-  channelId = channelId || ChannelUI.getCurrentId();
+    channelId = channelId || ChannelUI.getCurrentId();
 
-  if (!channelId) {
-    return;
-  }
-
-  const container = document.getElementById("postsContainer");
-
-  if (!container) {
-    console.warn("#postsContainer não encontrado.");
-
-    return;
-  }
-
-  showPostsLoading(container);
-
-  try {
-    const response = await fetch(
-      `${POSTS_API}/channel/${encodeURIComponent(channelId)}`,
-      {
-        method: "GET",
-
-        headers: {
-          Accept: "application/json",
-        },
-
-        credentials: "same-origin",
-      },
-    );
-
-    const data = await response.json().catch(() => null);
-
-    if (response.status === 401) {
-      renderPostsError(
-        container,
-        data?.message || "Você precisa estar autenticado.",
-      );
-
-      return;
+    if (!channelId) {
+        return;
     }
 
-    if (response.status === 403) {
-      renderPostsError(
-        container,
-        data?.message || "Você não possui acesso a estas publicações.",
-      );
+    const container = document.getElementById("postsContainer");
 
-      return;
+    if (!container) {
+        console.warn("#postsContainer não encontrado.");
+
+        return;
     }
 
-    if (!response.ok) {
-      throw new Error(
-        data?.message || `Erro ao carregar publicações: ${response.status}`,
-      );
+    showPostsLoading(container);
+
+    try {
+        const response = await fetch(
+            `${POSTS_API}/channel/${encodeURIComponent(channelId)}`,
+            {
+                method: "GET",
+
+                headers: {
+                    Accept: "application/json",
+                },
+
+                credentials: "same-origin",
+            },
+        );
+
+        const data = await response.json().catch(() => null);
+
+        if (response.status === 401) {
+            renderPostsError(
+                container,
+                data?.message || "Você precisa estar autenticado.",
+            );
+
+            return;
+        }
+
+        if (response.status === 403) {
+            renderPostsError(
+                container,
+                data?.message || "Você não possui acesso a estas publicações.",
+            );
+
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                data?.message || `Erro ao carregar publicações: ${response.status}`,
+            );
+        }
+
+        renderPosts(Array.isArray(data) ? data : []);
+    } catch (error) {
+        console.error("Erro ao carregar publicações:", error);
+
+        renderPostsError(container, "Não foi possível carregar as publicações.");
     }
-
-    renderPosts(Array.isArray(data) ? data : []);
-  } catch (error) {
-    console.error("Erro ao carregar publicações:", error);
-
-    renderPostsError(container, "Não foi possível carregar as publicações.");
-  }
 }
 
 // LOADING
 
 function showPostsLoading(container) {
-  container.innerHTML = `
+    container.innerHTML = `
 
         <div class="posts-loading">
 
@@ -300,16 +321,16 @@ function showPostsLoading(container) {
 // RENDER POSTS
 
 function renderPosts(posts) {
-  const container = document.getElementById("postsContainer");
+    const container = document.getElementById("postsContainer");
 
-  if (!container) {
-    return;
-  }
+    if (!container) {
+        return;
+    }
 
-  container.innerHTML = "";
+    container.innerHTML = "";
 
-  if (!posts.length) {
-    container.innerHTML = `
+    if (!posts.length) {
+        container.innerHTML = `
 
             <div class="empty-posts-state">
 
@@ -325,43 +346,43 @@ function renderPosts(posts) {
 
         `;
 
-    return;
-  }
+        return;
+    }
 
-  const fragment = document.createDocumentFragment();
+    const fragment = document.createDocumentFragment();
 
-  posts.forEach((post) => {
-    fragment.appendChild(createPostElement(post));
-  });
+    posts.forEach((post) => {
+        fragment.appendChild(createPostElement(post));
+    });
 
-  container.appendChild(fragment);
+    container.appendChild(fragment);
 }
 
 // POST
 
 function createPostElement(post) {
-  const article = document.createElement("article");
+    const article = document.createElement("article");
 
-  article.className = "channel-post";
+    article.className = "channel-post";
 
-  article.dataset.postId = post.id;
+    article.dataset.postId = post.id;
 
-  const authorName = escapePostHtml(post.authorName || "Usuário");
+    const authorName = escapePostHtml(post.authorName || "Usuário");
 
-  const content = escapePostHtml(post.content || "");
+    const content = escapePostHtml(post.content || "");
 
-  const authorPhoto = post.authorPhotoUrl || "/images/default-avatar.png";
+    const authorPhoto = post.authorPhotoUrl || "/images/default-avatar.png";
 
-  const likesCount = Number(post.likesCount || 0);
+    const likesCount = Number(post.likesCount || 0);
 
-  const sharesCount = Number(post.sharesCount || 0);
+    const sharesCount = Number(post.sharesCount || 0);
 
-  const liked = post.isLikedByCurrentUser === true;
+    const liked = post.isLikedByCurrentUser === true;
 
-  let imageHtml = "";
+    let imageHtml = "";
 
-  if (post.imageUrl) {
-    imageHtml = `
+    if (post.imageUrl) {
+        imageHtml = `
 
             <div class="post-image">
 
@@ -375,9 +396,9 @@ function createPostElement(post) {
             </div>
 
         `;
-  }
+    }
 
-  article.innerHTML = `
+    article.innerHTML = `
 
         <div class="post-header">
 
@@ -403,8 +424,7 @@ function createPostElement(post) {
         </div>
 
 
-        ${
-          content
+        ${content
             ? `
                     <div class="post-content">
                         ${content.replace(/\n/g, "<br>")}
@@ -454,164 +474,164 @@ function createPostElement(post) {
 
     `;
 
-  return article;
+    return article;
 }
 
 // LIKE
 
 async function toggleLikePost(postId, button) {
-  const alreadyLiked = button.classList.contains("liked");
+    const alreadyLiked = button.classList.contains("liked");
 
-  button.disabled = true;
+    button.disabled = true;
 
-  try {
-    const response = await fetch(
-      `${POSTS_API}/${encodeURIComponent(postId)}/like`,
-      {
-        method: alreadyLiked ? "DELETE" : "POST",
+    try {
+        const response = await fetch(
+            `${POSTS_API}/${encodeURIComponent(postId)}/like`,
+            {
+                method: alreadyLiked ? "DELETE" : "POST",
 
-        headers: {
-          Accept: "application/json",
-        },
+                headers: {
+                    Accept: "application/json",
+                },
 
-        credentials: "same-origin",
-      },
-    );
+                credentials: "same-origin",
+            },
+        );
 
-    const data = await response.json().catch(() => null);
+        const data = await response.json().catch(() => null);
 
-    if (!response.ok) {
-      throw new Error(data?.message || "Não foi possível atualizar a curtida.");
+        if (!response.ok) {
+            throw new Error(data?.message || "Não foi possível atualizar a curtida.");
+        }
+
+        const countElement = button.querySelector("span");
+
+        let count = Number(countElement?.textContent || 0);
+
+        if (alreadyLiked) {
+            count = Math.max(0, count - 1);
+
+            button.classList.remove("liked");
+
+            const icon = button.querySelector("i");
+
+            if (icon) {
+                icon.className = "bi bi-heart";
+            }
+        } else {
+            count++;
+
+            button.classList.add("liked");
+
+            const icon = button.querySelector("i");
+
+            if (icon) {
+                icon.className = "bi bi-heart-fill";
+            }
+        }
+
+        if (countElement) {
+            countElement.textContent = count;
+        }
+    } catch (error) {
+        console.error("Erro ao curtir publicação:", error);
+
+        showPostMessage(
+            error.message || "Não foi possível atualizar a curtida.",
+            "danger",
+        );
+    } finally {
+        button.disabled = false;
     }
-
-    const countElement = button.querySelector("span");
-
-    let count = Number(countElement?.textContent || 0);
-
-    if (alreadyLiked) {
-      count = Math.max(0, count - 1);
-
-      button.classList.remove("liked");
-
-      const icon = button.querySelector("i");
-
-      if (icon) {
-        icon.className = "bi bi-heart";
-      }
-    } else {
-      count++;
-
-      button.classList.add("liked");
-
-      const icon = button.querySelector("i");
-
-      if (icon) {
-        icon.className = "bi bi-heart-fill";
-      }
-    }
-
-    if (countElement) {
-      countElement.textContent = count;
-    }
-  } catch (error) {
-    console.error("Erro ao curtir publicação:", error);
-
-    showPostMessage(
-      error.message || "Não foi possível atualizar a curtida.",
-      "danger",
-    );
-  } finally {
-    button.disabled = false;
-  }
 }
 
 // PARTILHAR
 
 async function sharePost(postId) {
-  if (!ChannelUI.canPublish()) {
-    showPostMessage(
-      "Apenas administradores e o proprietário podem partilhar publicações.",
-      "danger",
-    );
+    if (!ChannelUI.canPublish()) {
+        showPostMessage(
+            "Apenas administradores e o proprietário podem partilhar publicações.",
+            "danger",
+        );
 
-    return;
-  }
-
-  try {
-    const response = await fetch(
-      `${POSTS_API}/${encodeURIComponent(postId)}/share`,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-
-        credentials: "same-origin",
-
-        body: JSON.stringify({}),
-      },
-    );
-
-    const data = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      throw new Error(
-        data?.message || "Não foi possível partilhar a publicação.",
-      );
+        return;
     }
 
-    showPostMessage("Publicação partilhada com sucesso.", "success");
+    try {
+        const response = await fetch(
+            `${POSTS_API}/${encodeURIComponent(postId)}/share`,
+            {
+                method: "POST",
 
-    await loadChannelPosts();
-  } catch (error) {
-    console.error("Erro ao partilhar:", error);
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                },
 
-    showPostMessage(error.message || "Não foi possível partilhar.", "danger");
-  }
+                credentials: "same-origin",
+
+                body: JSON.stringify({}),
+            },
+        );
+
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+            throw new Error(
+                data?.message || "Não foi possível partilhar a publicação.",
+            );
+        }
+
+        showPostMessage("Publicação partilhada com sucesso.", "success");
+
+        await loadChannelPosts();
+    } catch (error) {
+        console.error("Erro ao partilhar:", error);
+
+        showPostMessage(error.message || "Não foi possível partilhar.", "danger");
+    }
 }
 
 // MENSAGEM
 
 function showPostMessage(message, type = "info") {
-  let container = document.getElementById("postMessageContainer");
+    let container = document.getElementById("postMessageContainer");
 
-  if (!container) {
-    container = document.createElement("div");
+    if (!container) {
+        container = document.createElement("div");
 
-    container.id = "postMessageContainer";
+        container.id = "postMessageContainer";
 
-    container.style.position = "fixed";
+        container.style.position = "fixed";
 
-    container.style.top = "20px";
+        container.style.top = "20px";
 
-    container.style.right = "20px";
+        container.style.right = "20px";
 
-    container.style.zIndex = "9999";
+        container.style.zIndex = "9999";
 
-    container.style.maxWidth = "380px";
+        container.style.maxWidth = "380px";
 
-    document.body.appendChild(container);
-  }
+        document.body.appendChild(container);
+    }
 
-  const alert = document.createElement("div");
+    const alert = document.createElement("div");
 
-  alert.className = `alert alert-${type} shadow-sm`;
+    alert.className = `alert alert-${type} shadow-sm`;
 
-  alert.textContent = message;
+    alert.textContent = message;
 
-  container.appendChild(alert);
+    container.appendChild(alert);
 
-  setTimeout(() => {
-    alert.remove();
-  }, 3500);
+    setTimeout(() => {
+        alert.remove();
+    }, 3500);
 }
 
 // ERRO
 
 function renderPostsError(container, message) {
-  container.innerHTML = `
+    container.innerHTML = `
 
         <div class="channel-error-view">
 
@@ -643,16 +663,16 @@ function renderPostsError(container, message) {
 // LOADING BUTTON
 
 function setButtonLoading(button, loading, text) {
-  if (!button) {
-    return;
-  }
+    if (!button) {
+        return;
+    }
 
-  if (loading) {
-    button.dataset.originalText = button.innerHTML;
+    if (loading) {
+        button.dataset.originalText = button.innerHTML;
 
-    button.disabled = true;
+        button.disabled = true;
 
-    button.innerHTML = `
+        button.innerHTML = `
 
             <span
                 class="spinner-border spinner-border-sm me-1"
@@ -661,62 +681,62 @@ function setButtonLoading(button, loading, text) {
             ${text}
 
         `;
-  } else {
-    button.disabled = false;
+    } else {
+        button.disabled = false;
 
-    button.innerHTML = button.dataset.originalText || text;
-  }
+        button.innerHTML = button.dataset.originalText || text;
+    }
 }
 
 // DATA
 
 function formatPostDate(dateValue) {
-  if (!dateValue) {
-    return "";
-  }
+    if (!dateValue) {
+        return "";
+    }
 
-  if (window.ChatPreferences?.formatDateTime) {
-    return window.ChatPreferences.formatDateTime(dateValue, {
-      dateStyle: "short",
-      timeStyle: "short",
+    if (window.ChatPreferences?.formatDateTime) {
+        return window.ChatPreferences.formatDateTime(dateValue, {
+            dateStyle: "short",
+            timeStyle: "short",
+        });
+    }
+
+    const date = new Date(dateValue);
+
+    if (Number.isNaN(date.getTime())) {
+        return "";
+    }
+
+    return date.toLocaleString("pt-PT", {
+        dateStyle: "short",
+        timeStyle: "short",
     });
-  }
-
-  const date = new Date(dateValue);
-
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  return date.toLocaleString("pt-PT", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
 }
 
 // ESCAPE
 
 function escapePostHtml(value) {
-  if (value === null || value === undefined) {
-    return "";
-  }
+    if (value === null || value === undefined) {
+        return "";
+    }
 
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
 }
 
 // GLOBAL
 
 window.ChannelPosts = {
-  load: loadChannelPosts,
+    load: loadChannelPosts,
 
-  create: handleCreatePost,
+    create: handleCreatePost,
 
-  like: toggleLikePost,
+    like: toggleLikePost,
 
-  share: sharePost,
+    share: sharePost,
 };

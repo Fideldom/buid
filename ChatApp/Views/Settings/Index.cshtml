@@ -8,7 +8,6 @@
 @Html.AntiForgeryToken()
 
 <link rel="stylesheet" href="~/css/settings.css" asp-append-version="true" />
-<script src="~/js/preferences-advanced.js" asp-append-version="true"></script>
 
 <div class="settings-page">
 
@@ -951,32 +950,179 @@
                          data-content="security">
 
                     <div class="section-heading">
-
                         <span class="section-heading-icon">
                             <i class="bi bi-shield-check"></i>
                         </span>
-
                         <div>
-                            <h2>Segurança</h2>
-                            <p>Protege a tua conta e as tuas sessões.</p>
+                            <h2>Segurança da conta</h2>
+                            <p>Altera a palavra-passe, protege o acesso e termina sessões antigas.</p>
                         </div>
-
                     </div>
 
-                    <div class="coming-soon-card">
+                    <div class="security-status-card" id="securityStatusCard">
+                        <div class="security-status-icon">
+                            <i class="bi bi-shield-lock-fill"></i>
+                        </div>
+                        <div class="security-status-copy">
+                            <strong id="securityStatusTitle">A verificar a segurança...</strong>
+                            <span id="securityStatusText">A carregar o estado da tua conta.</span>
+                        </div>
+                        <span class="security-status-badge" id="securityStatusBadge">—</span>
+                    </div>
 
-                        <div class="coming-soon-icon">
-                            <i class="bi bi-lock"></i>
+                    <div class="security-card">
+                        <div class="security-card-header">
+                            <div class="security-card-icon"><i class="bi bi-key-fill"></i></div>
+                            <div>
+                                <h3>Alterar palavra-passe</h3>
+                                <p>Usa uma palavra-passe forte e diferente das anteriores.</p>
+                            </div>
                         </div>
 
-                        <h3>Segurança da conta</h3>
+                        <div class="security-form-grid">
+                            <div class="security-field">
+                                <label for="securityCurrentPassword">Palavra-passe atual</label>
+                                <div class="security-input-wrap">
+                                    <i class="bi bi-lock"></i>
+                                    <input id="securityCurrentPassword" type="password" autocomplete="current-password" maxlength="100">
+                                    <button type="button" class="security-password-toggle" data-password-target="securityCurrentPassword" aria-label="Mostrar palavra-passe">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="security-field">
+                                <label for="securityNewPassword">Nova palavra-passe</label>
+                                <div class="security-input-wrap">
+                                    <i class="bi bi-key"></i>
+                                    <input id="securityNewPassword" type="password" autocomplete="new-password" maxlength="100">
+                                    <button type="button" class="security-password-toggle" data-password-target="securityNewPassword" aria-label="Mostrar palavra-passe">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                                <small>Mínimo de 10 caracteres, com maiúscula, minúscula, número e símbolo.</small>
+                            </div>
+                            <div class="security-field">
+                                <label for="securityConfirmPassword">Confirmar nova palavra-passe</label>
+                                <div class="security-input-wrap">
+                                    <i class="bi bi-check2-circle"></i>
+                                    <input id="securityConfirmPassword" type="password" autocomplete="new-password" maxlength="100">
+                                    <button type="button" class="security-password-toggle" data-password-target="securityConfirmPassword" aria-label="Mostrar palavra-passe">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
 
-                        <p>
-                            Palavra-passe, sessões ativas, autenticação
-                            em dois fatores e alertas de login serão
-                            adicionados numa fase posterior.
-                        </p>
+                        <div class="security-card-actions">
+                            <button type="button" id="btnChangePassword" class="btn-save-settings">
+                                <i class="bi bi-shield-check"></i>
+                                <span>Alterar palavra-passe</span>
+                            </button>
+                        </div>
+                    </div>
 
+                    <div class="security-card">
+                        <div class="security-card-header">
+                            <div class="security-card-icon"><i class="bi bi-phone-fill"></i></div>
+                            <div>
+                                <h3>Autenticação em dois fatores</h3>
+                                <p>Adiciona uma segunda confirmação através de uma aplicação autenticadora.</p>
+                            </div>
+                        </div>
+
+                        <div class="two-factor-panel" id="twoFactorPanel">
+                            <div class="two-factor-intro">
+                                <strong id="twoFactorTitle">A carregar...</strong>
+                                <span id="twoFactorDescription">A verificar o estado da autenticação em dois fatores.</span>
+                            </div>
+
+                            <div id="twoFactorSetup" class="two-factor-setup d-none">
+                                <div class="two-factor-warning">
+                                    <i class="bi bi-info-circle-fill"></i>
+                                    <div>
+                                        <strong>Configura a aplicação autenticadora</strong>
+                                        <span>Abre Google Authenticator, Microsoft Authenticator, Authy ou outra aplicação compatível e adiciona a conta usando a chave abaixo.</span>
+                                    </div>
+                                </div>
+
+                                <label class="security-field">
+                                    <span>Chave de configuração</span>
+                                    <div class="security-copy-wrap">
+                                        <input id="twoFactorKey" type="text" readonly>
+                                        <button type="button" id="btnCopyTwoFactorKey" class="btn-outline-settings"><i class="bi bi-copy"></i> Copiar</button>
+                                    </div>
+                                </label>
+
+                                <label class="security-field">
+                                    <span>Código de 6 dígitos</span>
+                                    <input id="twoFactorCode" class="security-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="000000">
+                                </label>
+
+                                <div class="security-card-actions">
+                                    <button type="button" id="btnEnableTwoFactor" class="btn-save-settings">
+                                        <i class="bi bi-shield-plus"></i>
+                                        <span>Confirmar e ativar</span>
+                                    </button>
+                                </div>
+
+                                <div id="twoFactorRecovery" class="two-factor-recovery d-none">
+                                    <div class="two-factor-warning">
+                                        <i class="bi bi-exclamation-triangle-fill"></i>
+                                        <div>
+                                            <strong>Guarda estes códigos de recuperação</strong>
+                                            <span>Cada código pode ser usado uma vez se perderes o acesso à aplicação autenticadora. Esta lista é apresentada agora para não expor os códigos novamente.</span>
+                                        </div>
+                                    </div>
+                                    <div id="twoFactorRecoveryCodes" class="recovery-codes"></div>
+                                    <button type="button" id="btnCopyRecoveryCodes" class="btn-outline-settings">
+                                        <i class="bi bi-copy"></i>
+                                        Copiar códigos
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="two-factor-enabled d-none" id="twoFactorEnabledBox">
+                                <i class="bi bi-check-circle-fill"></i>
+                                <span>A autenticação em dois fatores está ativa nesta conta.</span>
+                                <button type="button" id="btnDisableTwoFactor" class="btn-danger-settings">Desativar</button>
+                            </div>
+
+                            <div class="two-factor-actions" id="twoFactorActions">
+                                <button type="button" id="btnSetupTwoFactor" class="btn-outline-settings">
+                                    <i class="bi bi-shield-plus"></i>
+                                    Configurar 2FA
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="security-card">
+                        <div class="security-card-header">
+                            <div class="security-card-icon"><i class="bi bi-laptop"></i></div>
+                            <div>
+                                <h3>Sessões</h3>
+                                <p>Termina o acesso de outros dispositivos onde a tua conta possa estar aberta.</p>
+                            </div>
+                        </div>
+
+                        <div class="security-session-row">
+                            <div>
+                                <strong>Terminar outras sessões</strong>
+                                <span>A sessão que estás a utilizar continuará ativa.</span>
+                            </div>
+                            <button type="button" id="btnRevokeSessions" class="btn-danger-settings">
+                                <i class="bi bi-box-arrow-right"></i>
+                                Terminar outras sessões
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="security-note-card">
+                        <i class="bi bi-shield-check"></i>
+                        <div>
+                            <strong>Proteção adicional</strong>
+                            <span>O ChatApp usa o sistema de autenticação do ASP.NET Identity. Depois de alterar a palavra-passe ou terminar outras sessões, os tokens de segurança são atualizados.</span>
+                        </div>
                     </div>
 
                 </section>
@@ -1018,7 +1164,7 @@
 
                             <div>
                                 <span>Versão</span>
-                                <strong>1.0</strong>
+                                <strong>1.2</strong>
                             </div>
 
                             <div>

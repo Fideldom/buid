@@ -830,6 +830,523 @@ document.addEventListener("DOMContentLoaded", () => {
     loadPrivacySettings();
   }
 
+  // NOTIFICAÇÕES E APARÊNCIA AVANÇADAS
+
+  let advancedPreferencesLoaded = false;
+
+  function applyAdvancedAppearance(preferences) {
+    const p = preferences || {};
+    const root = document.documentElement;
+
+    root.dataset.theme = p.theme || "system";
+    root.dataset.density = p.uiDensity || "comfortable";
+    root.classList.toggle("reduce-motion", p.reduceMotion === true);
+    root.style.setProperty("--chatapp-accent", p.accentColor || "#2563eb");
+
+    try {
+      localStorage.setItem("chatapp.appearance", JSON.stringify(p));
+    } catch (_) {}
+  }
+
+  async function loadAdvancedPreferences() {
+    if (advancedPreferencesLoaded) return;
+
+    try {
+      const response = await fetch("/api/preferences", {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro ao carregar preferências: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const notifications = data.notifications || {};
+
+      document.querySelectorAll(".advanced-notify").forEach((element) => {
+        const key = element.dataset.key;
+        if (key && Object.prototype.hasOwnProperty.call(notifications, key)) {
+          element.checked = notifications[key] === true;
+        }
+      });
+
+      const theme = document.getElementById("advancedTheme");
+      const accent = document.getElementById("advancedAccent");
+      const density = document.getElementById("advancedDensity");
+      const reduceMotion = document.getElementById("advancedReduceMotion");
+
+      if (theme) theme.value = data.theme || "system";
+      if (accent) accent.value = data.accentColor || "#2563eb";
+      if (density) density.value = data.uiDensity || "comfortable";
+      if (reduceMotion) reduceMotion.checked = data.reduceMotion === true;
+
+      applyAdvancedAppearance(data);
+      advancedPreferencesLoaded = true;
+    } catch (error) {
+      console.error("Erro ao carregar preferências avançadas:", error);
+    }
+  }
+
+  async function saveAdvancedPatch(patch, successMessage) {
+    const token = getAntiForgeryToken();
+    const headers = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    };
+
+    if (token) headers["RequestVerificationToken"] = token;
+
+    const response = await fetch("/api/preferences", {
+      method: "PUT",
+      headers,
+      credentials: "same-origin",
+      body: JSON.stringify(patch),
+    });
+
+    let data = null;
+    try {
+      data = await response.json();
+    } catch (_) {}
+
+    if (!response.ok) {
+      throw new Error(
+        data?.message || "Não foi possível guardar as preferências.",
+      );
+    }
+
+    showToast(successMessage);
+    return data;
+  }
+
+  const advancedNotificationsButton = document.getElementById(
+    "saveAdvancedNotifications",
+  );
+  advancedNotificationsButton?.addEventListener("click", async () => {
+    const patch = {};
+    document.querySelectorAll(".advanced-notify").forEach((element) => {
+      if (element.dataset.key) patch[element.dataset.key] = element.checked;
+    });
+
+    advancedNotificationsButton.disabled = true;
+
+    try {
+      await saveAdvancedPatch(patch, "Preferências de notificações guardadas.");
+    } catch (error) {
+      console.error(error);
+      showToast(error.message, false);
+    } finally {
+      advancedNotificationsButton.disabled = false;
+    }
+  });
+
+  const advancedAppearanceButton = document.getElementById(
+    "saveAdvancedAppearance",
+  );
+  advancedAppearanceButton?.addEventListener("click", async () => {
+    const patch = {
+      theme: document.getElementById("advancedTheme")?.value || "system",
+      accentColor:
+        document.getElementById("advancedAccent")?.value || "#2563eb",
+      uiDensity:
+        document.getElementById("advancedDensity")?.value || "comfortable",
+      reduceMotion:
+        document.getElementById("advancedReduceMotion")?.checked === true,
+    };
+
+    advancedAppearanceButton.disabled = true;
+
+    try {
+      const data = await saveAdvancedPatch(
+        patch,
+        "Aparência guardada com sucesso.",
+      );
+      applyAdvancedAppearance({ ...patch, ...(data || {}) });
+      window.dispatchEvent(
+        new CustomEvent("chatapp:appearance-changed", { detail: patch }),
+      );
+    } catch (error) {
+      console.error(error);
+      showToast(error.message, false);
+    } finally {
+      advancedAppearanceButton.disabled = false;
+    }
+  });
+
+  // SEGURANÇA
+
+  const securityElements = {
+    statusTitle: document.getElementById("securityStatusTitle"),
+    statusText: document.getElementById("securityStatusText"),
+    statusBadge: document.getElementById("securityStatusBadge"),
+    currentPassword: document.getElementById("securityCurrentPassword"),
+    newPassword: document.getElementById("securityNewPassword"),
+    confirmPassword: document.getElementById("securityConfirmPassword"),
+    changePassword: document.getElementById("btnChangePassword"),
+    setupTwoFactor: document.getElementById("btnSetupTwoFactor"),
+    twoFactorSetup: document.getElementById("twoFactorSetup"),
+    twoFactorKey: document.getElementById("twoFactorKey"),
+    twoFactorCode: document.getElementById("twoFactorCode"),
+    enableTwoFactor: document.getElementById("btnEnableTwoFactor"),
+    enabledTwoFactor: document.getElementById("twoFactorEnabledBox"),
+    disableTwoFactor: document.getElementById("btnDisableTwoFactor"),
+    twoFactorActions: document.getElementById("twoFactorActions"),
+    twoFactorRecovery: document.getElementById("twoFactorRecovery"),
+    twoFactorRecoveryCodes: document.getElementById("twoFactorRecoveryCodes"),
+    copyRecoveryCodes: document.getElementById("btnCopyRecoveryCodes"),
+    twoFactorTitle: document.getElementById("twoFactorTitle"),
+    twoFactorDescription: document.getElementById("twoFactorDescription"),
+    copyTwoFactorKey: document.getElementById("btnCopyTwoFactorKey"),
+    revokeSessions: document.getElementById("btnRevokeSessions"),
+  };
+
+  let twoFactorEnabled = false;
+
+  async function securityRequest(url, options = {}) {
+    const headers = {
+      Accept: "application/json",
+      ...(options.headers || {}),
+    };
+
+    const token = getAntiForgeryToken();
+    if (token) headers["RequestVerificationToken"] = token;
+
+    const response = await fetch(url, {
+      credentials: "same-origin",
+      ...options,
+      headers,
+    });
+
+    let data = null;
+    try {
+      data = await response.json();
+    } catch (_) {}
+
+    if (!response.ok) {
+      const message =
+        data?.message || `Operação recusada (${response.status}).`;
+      const error = new Error(message);
+      error.data = data;
+      error.status = response.status;
+      throw error;
+    }
+
+    return data;
+  }
+
+  function renderSecurityStatus() {
+    if (!securityElements.statusTitle) return;
+
+    if (twoFactorEnabled) {
+      securityElements.statusTitle.textContent =
+        "A tua conta tem proteção adicional ativa";
+      securityElements.statusText.textContent =
+        "A autenticação em dois fatores está configurada.";
+      securityElements.statusBadge.textContent = "Protegida";
+      securityElements.statusBadge.className =
+        "security-status-badge is-secure";
+    } else {
+      securityElements.statusTitle.textContent =
+        "A proteção adicional ainda não está ativa";
+      securityElements.statusText.textContent =
+        "Podes ativar a autenticação em dois fatores abaixo.";
+      securityElements.statusBadge.textContent = "Reforçar";
+      securityElements.statusBadge.className =
+        "security-status-badge is-warning";
+    }
+
+    securityElements.twoFactorTitle.textContent = twoFactorEnabled
+      ? "Autenticação em dois fatores ativa"
+      : "Autenticação em dois fatores desativada";
+    securityElements.twoFactorDescription.textContent = twoFactorEnabled
+      ? "Um código adicional será exigido quando o segundo fator estiver configurado no fluxo de autenticação."
+      : "Usa uma aplicação autenticadora para adicionar uma segunda camada de proteção.";
+
+    securityElements.setupTwoFactor?.classList.toggle(
+      "d-none",
+      twoFactorEnabled,
+    );
+    securityElements.enabledTwoFactor?.classList.toggle(
+      "d-none",
+      !twoFactorEnabled,
+    );
+    securityElements.twoFactorSetup?.classList.add("d-none");
+  }
+
+  async function loadSecurity() {
+    try {
+      const data = await securityRequest("/Settings/Security", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      twoFactorEnabled = data?.twoFactorEnabled === true;
+      renderSecurityStatus();
+    } catch (error) {
+      console.error("Erro ao carregar segurança:", error);
+      showToast(
+        error.message || "Não foi possível carregar a segurança.",
+        false,
+      );
+    }
+  }
+
+  function setSecurityButtonLoading(button, loading, text) {
+    if (!button) return;
+    button.disabled = loading;
+    if (loading) {
+      button.dataset.originalHtml = button.innerHTML;
+      button.innerHTML =
+        '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>A processar...</span>';
+    } else if (button.dataset.originalHtml) {
+      button.innerHTML = button.dataset.originalHtml;
+      delete button.dataset.originalHtml;
+    } else if (text) {
+      button.textContent = text;
+    }
+  }
+
+  securityElements.changePassword?.addEventListener("click", async () => {
+    const currentPassword = securityElements.currentPassword?.value || "";
+    const newPassword = securityElements.newPassword?.value || "";
+    const confirmPassword = securityElements.confirmPassword?.value || "";
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      showToast("Preenche todos os campos da palavra-passe.", false);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      showToast("A confirmação da nova palavra-passe não coincide.", false);
+      return;
+    }
+
+    if (newPassword.length < 10) {
+      showToast(
+        "A nova palavra-passe deve ter pelo menos 10 caracteres.",
+        false,
+      );
+      return;
+    }
+
+    setSecurityButtonLoading(securityElements.changePassword, true);
+
+    try {
+      await securityRequest("/Settings/Security/Password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+      });
+
+      securityElements.currentPassword.value = "";
+      securityElements.newPassword.value = "";
+      securityElements.confirmPassword.value = "";
+      showToast("Palavra-passe alterada com sucesso.");
+    } catch (error) {
+      console.error(error);
+      showToast(
+        error.message || "Não foi possível alterar a palavra-passe.",
+        false,
+      );
+    } finally {
+      setSecurityButtonLoading(securityElements.changePassword, false);
+    }
+  });
+
+  document.querySelectorAll(".security-password-toggle").forEach((button) => {
+    button.addEventListener("click", () => {
+      const input = document.getElementById(button.dataset.passwordTarget);
+      if (!input) return;
+      const visible = input.type === "text";
+      input.type = visible ? "password" : "text";
+      button.innerHTML = visible
+        ? '<i class="bi bi-eye"></i>'
+        : '<i class="bi bi-eye-slash"></i>';
+    });
+  });
+
+  securityElements.setupTwoFactor?.addEventListener("click", async () => {
+    setSecurityButtonLoading(securityElements.setupTwoFactor, true);
+
+    try {
+      const data = await securityRequest("/Settings/Security/TwoFactor/Setup", {
+        method: "POST",
+      });
+
+      if (data?.enabled) {
+        twoFactorEnabled = true;
+        renderSecurityStatus();
+        return;
+      }
+
+      if (securityElements.twoFactorKey)
+        securityElements.twoFactorKey.value = data?.key || "";
+      securityElements.twoFactorSetup?.classList.remove("d-none");
+      securityElements.twoFactorActions?.classList.add("d-none");
+      showToast(
+        "Chave gerada. Adiciona-a à tua aplicação autenticadora e confirma o código.",
+      );
+    } catch (error) {
+      console.error(error);
+      showToast(error.message || "Não foi possível preparar o 2FA.", false);
+    } finally {
+      setSecurityButtonLoading(securityElements.setupTwoFactor, false);
+    }
+  });
+
+  securityElements.copyTwoFactorKey?.addEventListener("click", async () => {
+    const value = securityElements.twoFactorKey?.value || "";
+    if (!value) return;
+
+    try {
+      await navigator.clipboard.writeText(value);
+      showToast("Chave copiada.");
+    } catch (_) {
+      securityElements.twoFactorKey.select();
+      document.execCommand("copy");
+      showToast("Chave copiada.");
+    }
+  });
+
+  securityElements.enableTwoFactor?.addEventListener("click", async () => {
+    const code = (securityElements.twoFactorCode?.value || "").replace(
+      /\s+/g,
+      "",
+    );
+
+    if (!/^\d{6,8}$/.test(code)) {
+      showToast(
+        "Introduz o código apresentado pela aplicação autenticadora.",
+        false,
+      );
+      return;
+    }
+
+    setSecurityButtonLoading(securityElements.enableTwoFactor, true);
+
+    try {
+      const data = await securityRequest(
+        "/Settings/Security/TwoFactor/Enable",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        },
+      );
+
+      twoFactorEnabled = true;
+      if (securityElements.twoFactorCode)
+        securityElements.twoFactorCode.value = "";
+
+      const recoveryCodes = Array.isArray(data?.recoveryCodes)
+        ? data.recoveryCodes
+        : [];
+      if (securityElements.twoFactorRecoveryCodes && recoveryCodes.length) {
+        securityElements.twoFactorRecoveryCodes.innerHTML = recoveryCodes
+          .map((item) => `<code>${String(item).replace(/[<>&"']/g, "")}</code>`)
+          .join("");
+        securityElements.twoFactorRecovery?.classList.remove("d-none");
+      }
+
+      renderSecurityStatus();
+      showToast("Autenticação em dois fatores ativada.");
+    } catch (error) {
+      console.error(error);
+      showToast(error.message || "Código inválido.", false);
+    } finally {
+      setSecurityButtonLoading(securityElements.enableTwoFactor, false);
+    }
+  });
+
+  securityElements.copyRecoveryCodes?.addEventListener("click", async () => {
+    const codes = Array.from(
+      securityElements.twoFactorRecoveryCodes?.querySelectorAll("code") || [],
+    )
+      .map((element) => element.textContent || "")
+      .filter(Boolean)
+      .join("\n");
+
+    if (!codes) return;
+
+    try {
+      await navigator.clipboard.writeText(codes);
+      showToast("Códigos de recuperação copiados.");
+    } catch (_) {
+      showToast("Não foi possível copiar os códigos automaticamente.", false);
+    }
+  });
+
+  securityElements.disableTwoFactor?.addEventListener("click", async () => {
+    const password = window.prompt(
+      "Para desativar o 2FA, introduz a tua palavra-passe atual:",
+    );
+    if (password === null) return;
+
+    if (!password.trim()) {
+      showToast("A palavra-passe é obrigatória.", false);
+      return;
+    }
+
+    setSecurityButtonLoading(securityElements.disableTwoFactor, true);
+
+    try {
+      await securityRequest("/Settings/Security/TwoFactor/Disable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword: password }),
+      });
+
+      twoFactorEnabled = false;
+      renderSecurityStatus();
+      showToast("Autenticação em dois fatores desativada.");
+    } catch (error) {
+      console.error(error);
+      showToast(error.message || "Não foi possível desativar o 2FA.", false);
+    } finally {
+      setSecurityButtonLoading(securityElements.disableTwoFactor, false);
+    }
+  });
+
+  securityElements.revokeSessions?.addEventListener("click", async () => {
+    if (
+      !window.confirm(
+        "Terminar as outras sessões? Esta ação vai invalidar os acessos antigos da tua conta.",
+      )
+    ) {
+      return;
+    }
+
+    setSecurityButtonLoading(securityElements.revokeSessions, true);
+
+    try {
+      await securityRequest("/Settings/Security/Sessions/Revoke", {
+        method: "POST",
+      });
+      showToast("As outras sessões foram terminadas.");
+    } catch (error) {
+      console.error(error);
+      showToast(
+        error.message || "Não foi possível terminar as outras sessões.",
+        false,
+      );
+    } finally {
+      setSecurityButtonLoading(securityElements.revokeSessions, false);
+    }
+  });
+
+  const originalShowSection = showSection;
+  showSection = function (sectionName) {
+    originalShowSection(sectionName);
+    if (sectionName === "notifications" || sectionName === "appearance") {
+      loadAdvancedPreferences();
+    }
+    if (sectionName === "security") {
+      loadSecurity();
+    }
+  };
+
   // INICIALIZAÇÃO
 
   (async () => {
@@ -842,9 +1359,7 @@ document.addEventListener("DOMContentLoaded", () => {
   })();
 });
 
-// ============================================================
 // CONFIGURAÇÕES AVANÇADAS — NOTIFICAÇÕES / APARÊNCIA
-// ============================================================
 (function () {
   const token = () =>
     document.querySelector('input[name="__RequestVerificationToken"]')?.value ||

@@ -45,23 +45,15 @@ async function startCallConnection() {
 
 startCallConnection();
 
-document
-  .getElementById("btnAudioCall")
-  ?.addEventListener("click", () => startCall("audio"));
+document.getElementById("btnAudioCall")?.addEventListener("click", () => startCall("audio"));
 
-document
-  .getElementById("btnVideoCall")
-  ?.addEventListener("click", () => startCall("video"));
+document.getElementById("btnVideoCall")?.addEventListener("click", () => startCall("video"));
 
 document.getElementById("btnHangup")?.addEventListener("click", endCall);
 
-document
-  .getElementById("btnToggleMic")
-  ?.addEventListener("click", toggleMicrophone);
+document.getElementById("btnToggleMic")?.addEventListener("click", toggleMicrophone);
 
-document
-  .getElementById("btnToggleCam")
-  ?.addEventListener("click", toggleCamera);
+document.getElementById("btnToggleCam")?.addEventListener("click", toggleCamera);
 
 document.getElementById("btnAcceptCall")?.addEventListener("click", acceptCall);
 
@@ -103,10 +95,7 @@ async function startCall(type) {
   } catch (error) {
     console.error("Erro ao acessar mídia:", error);
 
-    alert(
-      `Não foi possível aceder à câmara/microfone.\n\n` +
-        `${error.name}: ${error.message}`,
-    );
+    alert(`Não foi possível aceder à câmara/microfone.\n\n` + `${error.name}: ${error.message}`,);
 
     cleanupCall();
     return;
@@ -115,12 +104,7 @@ async function startCall(type) {
   showOutgoingCall(currentCallerName, currentCallerPhoto, type);
 
   try {
-    await callConnection.invoke(
-      "CallUser",
-      currentFriendId,
-      activeCallId,
-      type,
-    );
+    await callConnection.invoke("CallUser", currentFriendId, activeCallId, type,);
   } catch (error) {
     console.error("Erro ao chamar utilizador:", error);
 
@@ -130,8 +114,7 @@ async function startCall(type) {
   }
 }
 
-callConnection.on(
-  "IncomingCall",
+callConnection.on("IncomingCall",
   (callId, callerId, callerName, callerPhoto, type) => {
     console.log("IncomingCall:", {
       callId,
@@ -248,19 +231,13 @@ callConnection.on("PeerJoined", async (userId, connectionId) => {
 
     await peerConnection.setLocalDescription(offer);
 
-    await callConnection.invoke(
-      "SendSignal",
-      connectionId,
-      "offer",
-      JSON.stringify(offer),
-    );
+    await callConnection.invoke("SendSignal",connectionId, "offer", JSON.stringify(offer),);
   } catch (error) {
     console.error("Erro ao criar offer:", error);
   }
 });
 
-callConnection.on(
-  "ReceiveSignal",
+callConnection.on("ReceiveSignal",
   async (fromConnectionId, fromUserId, signalType, payload) => {
     remoteConnectionId = fromConnectionId;
 
@@ -278,12 +255,7 @@ callConnection.on(
 
         await peerConnection.setLocalDescription(answer);
 
-        await callConnection.invoke(
-          "SendSignal",
-          fromConnectionId,
-          "answer",
-          JSON.stringify(answer),
-        );
+        await callConnection.invoke("SendSignal", fromConnectionId, "answer", JSON.stringify(answer),);
 
         return;
       }
@@ -384,9 +356,7 @@ async function createPeerConnection() {
 
       remoteVideo.classList.remove("d-none");
 
-      document
-        .getElementById("remoteVideoPlaceholder")
-        ?.classList.add("d-none");
+      document.getElementById("remoteVideoPlaceholder")?.classList.add("d-none");
 
       remoteVideo.play().catch(() => {});
     }
@@ -394,13 +364,7 @@ async function createPeerConnection() {
 
   peerConnection.onicecandidate = (event) => {
     if (event.candidate && remoteConnectionId) {
-      callConnection
-        .invoke(
-          "SendSignal",
-          remoteConnectionId,
-          "ice",
-          JSON.stringify(event.candidate),
-        )
+      callConnection.invoke("SendSignal", remoteConnectionId, "ice", JSON.stringify(event.candidate),)
         .catch((error) => console.error("Erro ICE:", error));
     }
   };
@@ -466,8 +430,7 @@ function showIncomingCall(name, photo, type) {
   }
 
   if (text) {
-    text.textContent =
-      type === "video" ? "Videochamada recebida" : "Chamada de áudio recebida";
+    text.textContent = type === "video" ? "Videochamada recebida" : "Chamada de áudio recebida";
   }
 
   const acceptButton = document.getElementById("btnAcceptCall");
@@ -476,16 +439,14 @@ function showIncomingCall(name, photo, type) {
     const icon = acceptButton.querySelector("i");
 
     if (icon) {
-      icon.className =
-        type === "video" ? "bi bi-camera-video-fill" : "bi bi-telephone-fill";
+      icon.className = type === "video" ? "bi bi-camera-video-fill" : "bi bi-telephone-fill";
     }
   }
 
   const incomingLabel = overlay?.querySelector(".incoming-call-label");
 
   if (incomingLabel) {
-    incomingLabel.textContent =
-      type === "video" ? "Videochamada recebida" : "Chamada recebida";
+    incomingLabel.textContent = type === "video" ? "Videochamada recebida" : "Chamada recebida";
   }
 
   if (overlay) {
@@ -539,8 +500,7 @@ function showCallOverlay(name, photo, type) {
   }
 
   if (typeElement) {
-    typeElement.textContent =
-      type === "video" ? "Videochamada" : "Chamada de áudio";
+    typeElement.textContent = type === "video" ? "Videochamada" : "Chamada de áudio";
   }
 
   configureCallMode(type);
@@ -656,9 +616,7 @@ function toggleCamera() {
   button.classList.toggle("active", !track.enabled);
 
   if (icon) {
-    icon.className = track.enabled
-      ? "bi bi-camera-video-fill"
-      : "bi bi-camera-video-off-fill";
+    icon.className = track.enabled ? "bi bi-camera-video-fill" : "bi bi-camera-video-off-fill";
   }
 }
 

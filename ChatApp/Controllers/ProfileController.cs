@@ -18,7 +18,10 @@ public class ProfileController : ControllerBase
         _userManager = userManager;
     }
 
+    // =====================================================
     // PERFIL DO UTILIZADOR AUTENTICADO
+    // =====================================================
+
     [HttpGet("me")]
     public async Task<IActionResult> GetMyProfile()
     {

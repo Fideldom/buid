@@ -18,7 +18,11 @@ public class PostController : ControllerBase
         _postService = postService;
     }
 
-    // CRIAR PUBLICAÇÃO --> POST: api/posts
+    // =========================================================
+    // CRIAR PUBLICAÇÃO
+    // POST: api/posts
+    // =========================================================
+
     [HttpPost]
     public async Task<IActionResult> CreatePost(
         [FromBody] CreatePostDto dto)
@@ -65,8 +69,11 @@ public class PostController : ControllerBase
         }
     }
 
+    // =========================================================
     // LISTAR PUBLICAÇÕES DO CANAL
     // GET: api/posts/channel/{channelId}
+    // =========================================================
+
     [HttpGet("channel/{channelId:guid}")]
     public async Task<IActionResult> GetChannelPosts(
         Guid channelId)
@@ -104,8 +111,11 @@ public class PostController : ControllerBase
         }
     }
 
+    // =========================================================
     // CURTIR PUBLICAÇÃO
     // POST: api/posts/{id}/like
+    // =========================================================
+
     [HttpPost("{id:guid}/like")]
     public async Task<IActionResult> LikePost(Guid id)
     {
@@ -137,8 +147,11 @@ public class PostController : ControllerBase
         }
     }
 
+    // =========================================================
     // REMOVER CURTIDA
     // DELETE: api/posts/{id}/like
+    // =========================================================
+
     [HttpDelete("{id:guid}/like")]
     public async Task<IActionResult> UnlikePost(Guid id)
     {
@@ -170,8 +183,10 @@ public class PostController : ControllerBase
         }
     }
 
+    // =========================================================
     // PARTILHAR PUBLICAÇÃO
     // POST: api/posts/{id}/share
+
     [HttpPost("{id:guid}/share")]
     public async Task<IActionResult> SharePost(Guid id)
     {

@@ -19,7 +19,10 @@ public class ChannelInviteService : IChannelInviteService
         _notificationService = notificationService;
     }
 
+    // =====================================================
     // ENVIAR CONVITE
+    // =====================================================
+
     public async Task InviteUserAsync(
         string userId,
         Guid channelId,
@@ -42,7 +45,10 @@ public class ChannelInviteService : IChannelInviteService
                 "O usuário convidado é obrigatório.");
         }
 
+        // =================================================
         // CANAL
+        // =================================================
+
         var channel = await _context.Channels
             .Include(c => c.Members)
             .FirstOrDefaultAsync(c => c.Id == channelId);
@@ -53,7 +59,10 @@ public class ChannelInviteService : IChannelInviteService
                 "Canal não encontrado.");
         }
 
+        // =================================================
         // QUEM ESTÁ A CONVIDAR
+        // =================================================
+
         var inviter = channel.Members
             .FirstOrDefault(m => m.UserId == userId);
 
@@ -70,7 +79,10 @@ public class ChannelInviteService : IChannelInviteService
                 "Apenas administradores e o proprietário podem convidar membros.");
         }
 
+        // =================================================
         // USUÁRIO CONVIDADO
+        // =================================================
+
         var invitedUser = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == dto.UserId);
 
@@ -80,14 +92,20 @@ public class ChannelInviteService : IChannelInviteService
                 "Usuário não encontrado.");
         }
 
+        // =================================================
         // NÃO CONVIDAR A SI MESMO
+        // =================================================
+
         if (dto.UserId == userId)
         {
             throw new ArgumentException(
                 "Você não pode convidar a si próprio.");
         }
 
+        // =================================================
         // VERIFICAR MEMBRO
+        // =================================================
+
         var alreadyMember = await _context.ChannelMembers
             .AnyAsync(m =>
                 m.ChannelId == channelId &&
@@ -99,7 +117,10 @@ public class ChannelInviteService : IChannelInviteService
                 "Este usuário já é membro do canal.");
         }
 
+        // =================================================
         // VERIFICAR CONVITE PENDENTE
+        // =================================================
+
         var pendingInvite = await _context.ChannelInvites
             .AnyAsync(i =>
                 i.ChannelId == channelId &&
@@ -112,7 +133,10 @@ public class ChannelInviteService : IChannelInviteService
                 "Este usuário já possui um convite pendente.");
         }
 
+        // =================================================
         // CRIAR CONVITE
+        // =================================================
+
         var invite = new ChannelInvite
         {
             Id = Guid.NewGuid(),
@@ -127,7 +151,10 @@ public class ChannelInviteService : IChannelInviteService
 
         await _context.SaveChangesAsync();
 
+        // =================================================
         // NOTIFICAÇÃO
+        // =================================================
+
         await _notificationService.CreateAsync(
             dto.UserId,
             NotificationType.ChannelInvite,
@@ -137,7 +164,9 @@ public class ChannelInviteService : IChannelInviteService
         );
     }
 
+    // =====================================================
     // ACEITAR CONVITE
+    // =====================================================
 
     public async Task AcceptInviteAsync(
         string userId,
@@ -185,7 +214,9 @@ public class ChannelInviteService : IChannelInviteService
         await _context.SaveChangesAsync();
     }
 
+    // =====================================================
     // RECUSAR CONVITE
+    // =====================================================
 
     public async Task RejectInviteAsync(
         string userId,
@@ -214,7 +245,9 @@ public class ChannelInviteService : IChannelInviteService
         await _context.SaveChangesAsync();
     }
 
+    // =====================================================
     // LISTAR MEMBROS DO CANAL
+    // =====================================================
 
     public async Task<IReadOnlyList<ChannelMemberResponseDto>> GetMembersAsync(
         string userId,
@@ -226,7 +259,10 @@ public class ChannelInviteService : IChannelInviteService
                 "Usuário não autenticado.");
         }
 
+        // =================================================
         // VERIFICAR SE O CANAL EXISTE
+        // =================================================
+
         var channelExists = await _context.Channels
             .AnyAsync(c => c.Id == channelId);
 
@@ -236,7 +272,10 @@ public class ChannelInviteService : IChannelInviteService
                 "Canal não encontrado.");
         }
 
+        // =================================================
         // VERIFICAR SE O USUÁRIO PODE VER OS MEMBROS
+        // =================================================
+
         var isMember = await _context.ChannelMembers
             .AnyAsync(m =>
                 m.ChannelId == channelId &&
@@ -248,7 +287,10 @@ public class ChannelInviteService : IChannelInviteService
                 "Você não é membro deste canal.");
         }
 
+        // =================================================
         // BUSCAR MEMBROS
+        // =================================================
+
         var members = await _context.ChannelMembers
             .Where(m => m.ChannelId == channelId)
             .Include(m => m.User)

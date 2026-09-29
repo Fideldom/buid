@@ -1,6 +1,6 @@
 "use strict";
 
-//  CHATAPP — CHANNELS  Controller principal dos canais PhotoUrl
+//  CHATAPP — CHANNELS  Controller principal dos canais PhotoUrl 
 document.addEventListener("DOMContentLoaded", () => {
   initializeChannels();
 });
@@ -521,11 +521,7 @@ function createChannelElement(channel, isMember) {
   const memberCount = Number(channel.memberCount || 0);
 
   // Inicial do canal
-  const initial =
-    String(channel.name || "C")
-      .trim()
-      .charAt(0)
-      .toUpperCase() || "C";
+  const initial = String(channel.name || "C").trim().charAt(0).toUpperCase() || "C";
 
   // FOTO / INICIAL DO CANAL
   let photo;
@@ -593,10 +589,8 @@ function createChannelElement(channel, isMember) {
 
             <button type="button" class="channel-open-btn" data-channel-id="${escapeHtml(channel.id)}">
 
-                ${
-                  isMember
-                    ? ` <i class="bi bi-box-arrow-in-right"></i> Abrir `
-                    : ` <i class="bi bi-eye"></i> Ver canal `
+                ${isMember ? ` <i class="bi bi-box-arrow-in-right"></i> Abrir `
+                           : ` <i class="bi bi-eye"></i> Ver canal `
                 }
 
             </button>

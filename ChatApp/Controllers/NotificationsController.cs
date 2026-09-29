@@ -53,20 +53,85 @@ public class NotificationsController : ControllerBase
         if (onlyUnread)
             query = query.Where(n => !n.IsRead);
 
-        var result = await query
+        var notifications = await query
             .OrderByDescending(n => n.CreatedAt)
             .Take(50)
-            .Select(n => new
-            {
-                n.Id,
-                Type = n.Type.ToString(),
-                n.Title,
-                n.Content,
-                n.RelatedEntityId,
-                n.IsRead,
-                n.CreatedAt
-            })
             .ToListAsync();
+
+        // Os botões de aceitar/recusar só podem aparecer quando o convite
+        // associado à notificação ainda está realmente pendente.
+        // Isto impede que notificações antigas de convites continuem
+        // apresentando ações que já não podem ser executadas.
+        var result = new List<object>(notifications.Count);
+
+        foreach (var notification in notifications)
+        {
+            var isActionable = false;
+            var actionReferenceType = (string?)null;
+
+            if (notification.Type == NotificationType.GroupInvite &&
+                Guid.TryParse(notification.RelatedEntityId, out var groupReferenceId))
+            {
+                // Novas notificações guardam o ID do convite.
+                isActionable = await _db.GroupInvites.AnyAsync(i =>
+                    i.Id == groupReferenceId &&
+                    i.InvitedUserId == userId &&
+                    i.Status == GroupInviteStatus.Pending);
+
+                if (isActionable)
+                {
+                    actionReferenceType = "GroupInviteId";
+                }
+                else
+                {
+                    // Compatibilidade com notificações antigas que guardavam
+                    // o ID do grupo em vez do ID do convite.
+                    var pending = await _db.GroupInvites
+                        .Where(i =>
+                            i.GroupId == groupReferenceId &&
+                            i.InvitedUserId == userId &&
+                            i.Status == GroupInviteStatus.Pending)
+                        .OrderByDescending(i => i.CreatedAt)
+                        .Select(i => new { i.CreatedAt })
+                        .FirstOrDefaultAsync();
+
+                    isActionable = pending != null &&
+                                   pending.CreatedAt <= notification.CreatedAt &&
+                                   pending.CreatedAt >= notification.CreatedAt.AddMinutes(-5);
+
+                    if (isActionable)
+                    {
+                        actionReferenceType = "GroupId";
+                    }
+                }
+            }
+            else if (notification.Type == NotificationType.ChannelInvite &&
+                     Guid.TryParse(notification.RelatedEntityId, out var inviteId))
+            {
+                isActionable = await _db.ChannelInvites.AnyAsync(i =>
+                    i.Id == inviteId &&
+                    i.InvitedUserId == userId &&
+                    i.Status == ChannelInviteStatus.Pending);
+
+                if (isActionable)
+                {
+                    actionReferenceType = "ChannelInviteId";
+                }
+            }
+
+            result.Add(new
+            {
+                notification.Id,
+                Type = notification.Type.ToString(),
+                notification.Title,
+                notification.Content,
+                notification.RelatedEntityId,
+                notification.IsRead,
+                notification.CreatedAt,
+                IsActionable = isActionable,
+                ActionReferenceType = actionReferenceType
+            });
+        }
 
         return Ok(result);
     }

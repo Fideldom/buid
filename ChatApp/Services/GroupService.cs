@@ -89,25 +89,98 @@ public class GroupService
         if (actor == null || actor.Role == GroupRole.Member) throw new UnauthorizedAccessException("Sem permissão para convidar membros.");
         if (!await _db.Users.AnyAsync(u => u.Id == userId)) throw new KeyNotFoundException("Utilizador não encontrado.");
         if (await _db.GroupMembers.AnyAsync(m => m.GroupId == groupId && m.UserId == userId)) throw new InvalidOperationException("O utilizador já pertence ao grupo.");
-        var pending = await _db.GroupInvites.FirstOrDefaultAsync(i => i.GroupId == groupId && i.InvitedUserId == userId && i.Status == GroupInviteStatus.Pending);
-        if (pending != null) return pending;
-        var invite = new GroupInvite { GroupId = groupId, InvitedUserId = userId, InvitedById = actorId };
+        var pending = await _db.GroupInvites
+            .FirstOrDefaultAsync(i =>
+                i.GroupId == groupId &&
+                i.InvitedUserId == userId &&
+                i.Status == GroupInviteStatus.Pending);
+
+        if (pending != null)
+        {
+            // Reenvio de convite: reaproveita o convite pendente, atualiza
+            // a origem/data e cria uma nova notificação. Não cria duplicados.
+            pending.InvitedById = actorId;
+            pending.CreatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            var existingGroup = await _db.ChatGroups.FindAsync(groupId);
+            await _notifications.CreateAsync(
+                userId,
+                NotificationType.GroupInvite,
+                "Convite para grupo",
+                $"Foste convidado para o grupo {existingGroup?.Name ?? "grupo"}.",
+                pending.Id.ToString());
+
+            return pending;
+        }
+
+        var invite = new GroupInvite
+        {
+            GroupId = groupId,
+            InvitedUserId = userId,
+            InvitedById = actorId
+        };
+
         _db.GroupInvites.Add(invite);
         await _db.SaveChangesAsync();
+
         var group = await _db.ChatGroups.FindAsync(groupId);
-        await _notifications.CreateAsync(userId, NotificationType.GroupInvite, "Convite para grupo", $"Foste convidado para o grupo {group?.Name ?? "grupo"}.", groupId.ToString());
+        await _notifications.CreateAsync(
+            userId,
+            NotificationType.GroupInvite,
+            "Convite para grupo",
+            $"Foste convidado para o grupo {group?.Name ?? "grupo"}.",
+            invite.Id.ToString());
+
         return invite;
     }
 
     public async Task AcceptInviteAsync(string userId, Guid groupId)
     {
-        var invite = await _db.GroupInvites.FirstOrDefaultAsync(i => i.GroupId == groupId && i.InvitedUserId == userId && i.Status == GroupInviteStatus.Pending);
-        if (invite == null) throw new KeyNotFoundException("Convite não encontrado.");
+        var invite = await _db.GroupInvites
+            .Where(i =>
+                i.GroupId == groupId &&
+                i.InvitedUserId == userId &&
+                i.Status == GroupInviteStatus.Pending)
+            .OrderByDescending(i => i.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (invite == null)
+            throw new KeyNotFoundException("Convite pendente não encontrado.");
+
+        await AcceptInviteByIdAsync(userId, invite.Id);
+    }
+
+    public async Task AcceptInviteByIdAsync(string userId, Guid inviteId)
+    {
+        var invite = await _db.GroupInvites
+            .FirstOrDefaultAsync(i =>
+                i.Id == inviteId &&
+                i.InvitedUserId == userId);
+
+        if (invite == null)
+            throw new KeyNotFoundException("Convite não encontrado.");
+
+        if (invite.Status != GroupInviteStatus.Pending)
+            throw new InvalidOperationException("Este convite já foi respondido.");
+
+        if (!await _db.GroupMembers.AnyAsync(m =>
+                m.GroupId == invite.GroupId && m.UserId == userId))
+        {
+            _db.GroupMembers.Add(new GroupMember
+            {
+                GroupId = invite.GroupId,
+                UserId = userId,
+                Role = GroupRole.Member
+            });
+        }
+
         invite.Status = GroupInviteStatus.Accepted;
-        if (!await _db.GroupMembers.AnyAsync(m => m.GroupId == groupId && m.UserId == userId))
-            _db.GroupMembers.Add(new GroupMember { GroupId = groupId, UserId = userId });
         await _db.SaveChangesAsync();
-        await _chatHub.Clients.Group(ChatHub.UserGroup(userId)).SendAsync("GroupInviteAccepted", groupId.ToString());
+
+        await _chatHub.Clients
+            .Group(ChatHub.UserGroup(userId))
+            .SendAsync("GroupInviteAccepted", invite.GroupId.ToString());
     }
 
     public async Task RemoveMemberAsync(string actorId, Guid groupId, string userId)
@@ -144,8 +217,33 @@ public class GroupService
     }
     public async Task RejectInviteAsync(string userId, Guid groupId)
     {
-        var invite = await _db.GroupInvites.FirstOrDefaultAsync(i => i.GroupId == groupId && i.InvitedUserId == userId && i.Status == GroupInviteStatus.Pending);
-        if (invite == null) throw new KeyNotFoundException("Convite não encontrado.");
+        var invite = await _db.GroupInvites
+            .Where(i =>
+                i.GroupId == groupId &&
+                i.InvitedUserId == userId &&
+                i.Status == GroupInviteStatus.Pending)
+            .OrderByDescending(i => i.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (invite == null)
+            throw new KeyNotFoundException("Convite pendente não encontrado.");
+
+        await RejectInviteByIdAsync(userId, invite.Id);
+    }
+
+    public async Task RejectInviteByIdAsync(string userId, Guid inviteId)
+    {
+        var invite = await _db.GroupInvites
+            .FirstOrDefaultAsync(i =>
+                i.Id == inviteId &&
+                i.InvitedUserId == userId);
+
+        if (invite == null)
+            throw new KeyNotFoundException("Convite não encontrado.");
+
+        if (invite.Status != GroupInviteStatus.Pending)
+            throw new InvalidOperationException("Este convite já foi respondido.");
+
         invite.Status = GroupInviteStatus.Rejected;
         await _db.SaveChangesAsync();
     }

@@ -41,8 +41,7 @@ public class ChannelController : ControllerBase
 
         if (string.IsNullOrWhiteSpace(userId))
         {
-            return Unauthorized(new
-            {
+            return Unauthorized(new {
                 message = "Usuário não autenticado."
             });
         }
@@ -114,8 +113,7 @@ public class ChannelController : ControllerBase
 
         if (string.IsNullOrWhiteSpace(currentUserId))
         {
-            return Unauthorized(new
-            {
+            return Unauthorized(new {
                 message = "Usuário não autenticado."
             });
         }
@@ -138,7 +136,7 @@ public class ChannelController : ControllerBase
             .Where(u => u.Id != currentUserId)
 
             // Procurar pelo nome, username ou email
-            .Where(u => u.FullName.Contains(q) || (u.UserName != null && u.UserName.Contains(q))
+            .Where(u => u.FullName.Contains(q) || (u.UserName != null && u.UserName.Contains(q)) 
                     || (u.Email != null && u.Email.Contains(q)))
             .OrderBy(u => u.FullName)
 
@@ -159,8 +157,7 @@ public class ChannelController : ControllerBase
 
     // ABRIR CANAL --> GET: api/channels/{id}
     [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetChannel(Guid id)
-    {
+    public async Task<IActionResult> GetChannel(Guid id) {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         if (string.IsNullOrWhiteSpace(userId))
@@ -209,8 +206,7 @@ public class ChannelController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
-            return StatusCode(403, new
-            {
+            return StatusCode(403, new {
                 message = ex.Message
             });
         }
@@ -240,8 +236,7 @@ public class ChannelController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new
-            {
+            return BadRequest(new {
                 message = ex.Message
             });
         }
@@ -345,15 +340,13 @@ public class ChannelController : ControllerBase
         {
             var result = await _postService.UnlikePostAsync(postId, userId);
 
-            return Ok(new
-            {
+            return Ok(new {
                 success = result
             });
         }
         catch (UnauthorizedAccessException ex)
         {
-            return StatusCode(403, new
-            {
+            return StatusCode(403, new {
                 message = ex.Message
             });
         }
@@ -384,8 +377,7 @@ public class ChannelController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
-            return StatusCode(403, new
-            {
+            return StatusCode(403, new {
                 message = ex.Message
             });
         }
@@ -412,29 +404,25 @@ public class ChannelController : ControllerBase
         {
             await _channelInviteService.InviteUserAsync(userId, channelId, dto);
 
-            return Ok(new
-            {
+            return Ok(new {
                 message = "Convite enviado com sucesso."
             });
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new
-            {
+            return BadRequest(new {
                 message = ex.Message
             });
         }
         catch (KeyNotFoundException ex)
         {
-            return NotFound(new
-            {
+            return NotFound(new {
                 message = ex.Message
             });
         }
         catch (UnauthorizedAccessException ex)
         {
-            return StatusCode(403, new
-            {
+            return StatusCode(403, new {
                 message = ex.Message
             });
         }
@@ -473,7 +461,7 @@ public class ChannelController : ControllerBase
         if (!string.IsNullOrWhiteSpace(dto.PhotoUrl) && !dto.PhotoUrl.StartsWith("/uploads/images/", StringComparison.OrdinalIgnoreCase)) return BadRequest(new { message = "Foto inválida." });
         channel.Name = name; channel.Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim(); channel.PhotoUrl = string.IsNullOrWhiteSpace(dto.PhotoUrl) ? null : dto.PhotoUrl.Trim(); channel.IsPrivate = dto.IsPrivate;
         await _context.SaveChangesAsync();
-        return Ok(new { id = channel.Id, name = channel.Name, description = channel.Description, photoUrl = channel.PhotoUrl, isPrivate = channel.IsPrivate });
+        return Ok(new { id=channel.Id, name=channel.Name, description=channel.Description, photoUrl=channel.PhotoUrl, isPrivate=channel.IsPrivate });
     }
 
 }

@@ -82,7 +82,7 @@ public class CallHub : Hub
         if (!IsCallParticipant(callId, UserId) || !IsCallParticipant(callId, callerId))
             throw new HubException("Chamada inválida ou expirada.");
 
-        if (!accepted) { ActiveCalls.TryRemove(callId, out _); } else { AcceptedCalls[callId] = 0; }
+        if (!accepted) { ActiveCalls.TryRemove(callId, out _); } else { AcceptedCalls[callId]=0; }
         await Clients.Group(UserGroup(callerId)).SendAsync("CallAnswered", callId, accepted);
     }
 

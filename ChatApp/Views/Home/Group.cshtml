@@ -1,60 +1,12 @@
-@{
-    ViewData["Title"] = "Grupo"; Layout = "_Layout";
-}
+@{ ViewData["Title"] = "Grupo"; Layout = "_Layout"; }
 <div class="group-chat-page container-fluid p-0" id="groupChatApp" data-group-id="@ViewBag.GroupId">
-    <div class="group-chat-header border-bottom p-3 d-flex align-items-center justify-content-between">
-        <div>
-            <h1 id="groupName" class="h5 mb-0">Grupo</h1><small id="groupMeta" class="text-muted"></small>
-        </div>
-        <div class="d-flex gap-2"><button id="groupMembersBtn" class="btn btn-outline-secondary" title="Membros"><i
-            class="bi bi-people"></i></button><button id="groupSettingsBtn"
-                                                  class="btn btn-outline-secondary d-none" title="Configurações" aria-hidden="true"><i
-            class="bi bi-gear"></i></button><button id="groupAudioCall" class="btn btn-outline-primary"
-                                                    title="Chamada de áudio"><i class="bi bi-telephone"></i></button><button id="groupVideoCall"
-                                                                                     class="btn btn-outline-primary" title="Videochamada"><i class="bi bi-camera-video"></i></button></div>
-        </div>
-        <div class="group-chat-body">
-            <div id="groupMessages" class="group-messages"></div>
-        </div>
-        <div class="group-chat-composer border-top p-3">
-            <div class="input-group"><input id="groupMessageInput" class="form-control"
-                                                placeholder="Escreve uma mensagem..."><button id="groupSend" class="btn btn-primary"><i
-                class="bi bi-send"></i></button></div>
-            </div>
-        </div>
-        <div class="modal fade" id="groupMembersModal" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Membros e convites</h5><button class="btn-close"
-                                                                               data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body"><input id="groupUserSearch" class="form-control mb-2"
-                                                       placeholder="Pesquisar utilizador...">
-                        <div id="groupUserResults"></div>
-                        <hr>
-                        <div id="groupMembersList"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="modal fade" id="groupSettingsModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Configurações do grupo</h5><button class="btn-close"
-                                                                                   data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body"><input id="groupSettingsName" class="form-control mb-2"><textarea
-                        id="groupSettingsDescription" class="form-control mb-2" rows="3"></textarea><input
-                        id="groupSettingsPhoto" type="file" class="form-control" accept="image/*">
-                        <div id="groupSettingsError" class="text-danger small mt-2"></div>
-                    </div>
-                    <div class="modal-footer"><button id="saveGroupSettings" class="btn btn-primary">Guardar</button></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <script src="~/js/groups/group-management.js" asp-append-version="true"></script>
-    <script src="~/js/groups/group-chat.js" asp-append-version="true"></script>
-    <script src="~/js/groups/group-call.js" asp-append-version="true"></script>
+ <div class="group-chat-header border-bottom p-3 d-flex align-items-center justify-content-between"><div><h1 id="groupName" class="h5 mb-0">Grupo</h1><small id="groupMeta" class="text-muted"></small></div><div class="d-flex gap-2"><button id="groupMembersBtn" class="btn btn-outline-secondary" title="Membros"><i class="bi bi-people"></i></button><button id="groupSettingsBtn" class="btn btn-outline-secondary d-none" title="Configurações" aria-hidden="true"><i class="bi bi-gear"></i></button><button id="groupAudioCall" class="btn btn-outline-primary" title="Chamada de áudio"><i class="bi bi-telephone"></i></button><button id="groupVideoCall" class="btn btn-outline-primary" title="Videochamada"><i class="bi bi-camera-video"></i></button></div></div>
+ <div class="group-chat-body"><div id="groupMessages" class="group-messages"></div></div>
+ <div class="group-chat-composer border-top p-3"><div class="input-group"><input id="groupMessageInput" class="form-control" placeholder="Escreve uma mensagem..."><button id="groupSend" class="btn btn-primary"><i class="bi bi-send"></i></button></div></div>
+</div>
+<div class="modal fade" id="groupMembersModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Membros e convites</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input id="groupUserSearch" class="form-control mb-2" placeholder="Pesquisar utilizador..."><div id="groupUserResults"></div><hr><div id="groupMembersList"></div></div></div></div></div>
+<div class="modal fade" id="groupSettingsModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Configurações do grupo</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input id="groupSettingsName" class="form-control mb-2"><textarea id="groupSettingsDescription" class="form-control mb-2" rows="3"></textarea><input id="groupSettingsPhoto" type="file" class="form-control" accept="image/*"><div id="groupSettingsError" class="text-danger small mt-2"></div></div><div class="modal-footer"><button id="saveGroupSettings" class="btn btn-primary">Guardar</button></div></div></div></div>
+</div>
+<script src="~/js/groups/group-management.js" asp-append-version="true"></script>
+<script src="~/js/groups/group-chat.js" asp-append-version="true"></script>
+<script src="~/js/groups/group-call.js" asp-append-version="true"></script>

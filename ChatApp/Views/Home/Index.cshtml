@@ -21,19 +21,28 @@
 
             </div>
 
-            <form asp-controller="Account"
-                  asp-action="Logout"
-                  method="post">
+            <div class="d-flex align-items-center gap-2">
 
-                <button class="btn btn-sm btn-outline-secondary"
-                        title="Sair" data-i18n-title="chat.logout" data-i18n-title="chat.logout" data-i18n-title="chat.logout" data-i18n-title="chat.logout"
-                        type="submit">
+                <a class="btn btn-sm btn-outline-secondary"
+                   href="/Settings"
+                   title="Configurações"
+                   aria-label="Configurações">
+                    <i class="bi bi-gear-fill"></i>
+                </a>
 
-                    <i class="bi bi-box-arrow-right"></i>
+                <form asp-controller="Account"
+                      asp-action="Logout"
+                      method="post">
 
-                </button>
+                    <button class="btn btn-sm btn-outline-secondary"
+                            title="Sair" data-i18n-title="chat.logout"
+                            type="submit">
+                        <i class="bi bi-box-arrow-right"></i>
+                    </button>
 
-            </form>
+                </form>
+
+            </div>
 
         </div>
 
@@ -193,6 +202,15 @@
 
                     </a>
 
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link"
+                       href="/Settings"
+                       title="Configurações"
+                       aria-label="Configurações">
+                        <i class="bi bi-gear-fill"></i>
+                    </a>
                 </li>
 
             </ul>

@@ -31,3 +31,14 @@ public class LoginDto
 
     public bool RememberMe { get; set; }
 }
+
+
+public class TwoFactorLoginDto
+{
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.StringLength(10, MinimumLength = 6)]
+    public string Code { get; set; } = string.Empty;
+
+    public bool RememberMe { get; set; }
+    public string? ReturnUrl { get; set; }
+}

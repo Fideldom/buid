@@ -95,6 +95,30 @@ public class GroupsController : ControllerBase
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
     }
 
+    [HttpPost("invites/{inviteId:guid}/accept")]
+    public async Task<IActionResult> AcceptInviteById(Guid inviteId)
+    {
+        try
+        {
+            await _groups.AcceptInviteByIdAsync(UserId, inviteId);
+            return Ok(new { success = true });
+        }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
+    }
+
+    [HttpPost("invites/{inviteId:guid}/reject")]
+    public async Task<IActionResult> RejectInviteById(Guid inviteId)
+    {
+        try
+        {
+            await _groups.RejectInviteByIdAsync(UserId, inviteId);
+            return Ok(new { success = true });
+        }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return Conflict(new { message = ex.Message }); }
+    }
+
     [HttpDelete("{id:guid}/members/{userId}")]
     public async Task<IActionResult> Remove(Guid id, string userId)
     {
